@@ -4,13 +4,16 @@ import Papa from 'papaparse';
 import { Package, Upload, Plus, Edit, Trash2, Search, X } from 'lucide-react';
 
 export default function AdminDashboard() {
+  const [activeTab, setActiveTab] = useState('inventory'); // inventory, settings
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   
-  // Form State
+  // Settings State
+  const [settings, setSettings] = useState({ id: null, store_whatsapp: '', payment_methods: [], contact_methods: [] });
+  const [savingSettings, setSavingSettings] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [formData, setFormData] = useState({
     name: '', description: '', uses: '', price: '', stock: '', images: ['', '', '']
@@ -18,7 +21,17 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     fetchProducts();
+    fetchSettings();
   }, []);
+
+  const fetchSettings = async () => {
+    try {
+      const { data, error } = await supabase.from('settings').select('*').limit(1).single();
+      if (data) setSettings(data);
+    } catch (error) {
+      console.error('Error fetching settings:', error);
+    }
+  };
 
   const fetchProducts = async () => {
     setLoading(true);
@@ -132,17 +145,57 @@ export default function AdminDashboard() {
 
   const filteredProducts = products.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()));
 
+  const saveSettings = async (e) => {
+    e.preventDefault();
+    setSavingSettings(true);
+    try {
+      const payload = {
+        store_whatsapp: settings.store_whatsapp, 
+        payment_methods: settings.payment_methods,
+        contact_methods: settings.contact_methods || []
+      };
+
+      if (settings.id) {
+        await supabase.from('settings').update(payload).eq('id', settings.id);
+      } else {
+        await supabase.from('settings').insert([payload]);
+      }
+      alert('Configuraciones guardadas');
+    } catch (error) {
+      alert('Error guardando ajustes');
+    } finally {
+      setSavingSettings(false);
+    }
+  };
+
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8">
-      <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
+    <div className="max-w-7xl mx-auto px-4 py-8 w-full">
+      <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4 border-b pb-4">
         <div>
           <h1 className="text-3xl font-bold text-gray-800 flex items-center gap-2">
-            <Package className="text-[#4a148c]" /> Gestión de Inventario
+            <Package className="text-[#4a148c]" /> Panel de Administración
           </h1>
-          <p className="text-gray-500">Administra los productos de Vioplast.</p>
+          <p className="text-gray-500">Administra Vioplast y tus métodos de pago.</p>
         </div>
-        
         <div className="flex gap-2">
+          <button 
+            onClick={() => setActiveTab('inventory')}
+            className={`px-6 py-2 rounded-lg font-bold transition ${activeTab === 'inventory' ? 'bg-[#4a148c] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+          >
+            Inventario
+          </button>
+          <button 
+            onClick={() => setActiveTab('settings')}
+            className={`px-6 py-2 rounded-lg font-bold transition ${activeTab === 'settings' ? 'bg-[#4a148c] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+          >
+            Configuración Pagos
+          </button>
+        </div>
+      </div>
+
+      {activeTab === 'inventory' && (
+      <div className="animate-fade-in">
+        <div className="flex justify-end gap-2 mb-4">
           {/* Carga Masiva (CSV) */}
           <label className={`cursor-pointer flex items-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg font-medium transition ${isUploading ? 'opacity-50 pointer-events-none' : ''}`}>
             <Upload className="w-4 h-4" />
@@ -154,7 +207,6 @@ export default function AdminDashboard() {
             <Plus className="w-4 h-4" /> Nuevo Producto
           </button>
         </div>
-      </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         <div className="p-4 border-b flex justify-between items-center bg-gray-50">
@@ -269,6 +321,164 @@ export default function AdminDashboard() {
             </form>
           </div>
         </div>
+      )}
+      </div>
+      )}
+
+      {activeTab === 'settings' && (
+        <form onSubmit={saveSettings} className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 max-w-3xl animate-fade-in mx-auto">
+          <h2 className="text-2xl font-bold text-[#4a148c] mb-6 border-b pb-2">Ajustes de Tienda</h2>
+          
+          <div className="mb-6">
+            <label className="block text-sm font-bold text-gray-700 mb-2">WhatsApp de Recepción de Pedidos</label>
+            <input 
+              type="text" 
+              required
+              value={settings.store_whatsapp || ''}
+              onChange={e => setSettings({...settings, store_whatsapp: e.target.value})}
+              placeholder="Ej: 573001234567"
+              className="w-full border rounded-lg p-3 focus:ring-2 focus:ring-[#4a148c] outline-none bg-gray-50" 
+            />
+            <p className="text-xs text-gray-500 mt-1">Ingresa el código de país sin el símbolo + seguido del número.</p>
+          </div>
+
+          <div className="mb-6">
+            <div className="flex justify-between items-center mb-2">
+              <label className="block text-sm font-bold text-gray-700">Canales de Pago (Bancos, Nequi, etc.)</label>
+              <button 
+                type="button"
+                onClick={() => setSettings({...settings, payment_methods: [...(settings.payment_methods || []), { type: 'Nequi', details: '' }]})}
+                className="text-xs bg-green-100 text-green-800 px-3 py-1 rounded-full font-bold hover:bg-green-200 transition"
+              >
+                + Añadir Medio de Pago
+              </button>
+            </div>
+            
+            {(!settings.payment_methods || settings.payment_methods.length === 0) && (
+              <p className="text-sm text-gray-400 italic mb-4">No hay medios de pago configurados. Tus clientes no sabrán dónde pagar.</p>
+            )}
+
+            <div className="space-y-3">
+              {(settings.payment_methods || []).map((method, index) => (
+                <div key={index} className="flex gap-2 items-center bg-gray-50 p-3 rounded-lg border border-gray-200">
+                  <select 
+                    value={method.type}
+                    onChange={(e) => {
+                      const newMethods = [...settings.payment_methods];
+                      newMethods[index].type = e.target.value;
+                      setSettings({...settings, payment_methods: newMethods});
+                    }}
+                    className="border rounded-md p-2 bg-white outline-none w-1/3"
+                  >
+                    <option value="Nequi">Nequi</option>
+                    <option value="Daviplata">Daviplata</option>
+                    <option value="Bancolombia">Bancolombia</option>
+                    <option value="Efectivo">Efectivo</option>
+                    <option value="Otro">Otro Banco</option>
+                  </select>
+                  
+                  <input 
+                    type="text" 
+                    required
+                    placeholder="Detalles (Ej: Cta Ahorros 123456 a nombre de Juan)" 
+                    value={method.details}
+                    onChange={(e) => {
+                      const newMethods = [...settings.payment_methods];
+                      newMethods[index].details = e.target.value;
+                      setSettings({...settings, payment_methods: newMethods});
+                    }}
+                    className="flex-grow border rounded-md p-2 bg-white outline-none"
+                  />
+                  
+                  <button 
+                    type="button" 
+                    onClick={() => {
+                      const newMethods = [...settings.payment_methods];
+                      newMethods.splice(index, 1);
+                      setSettings({...settings, payment_methods: newMethods});
+                    }}
+                    className="text-red-500 hover:bg-red-100 p-2 rounded transition"
+                  >
+                    <Trash2 size={20} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* NUEVO: Canales de Contacto */}
+          <div className="mb-8 pt-6 border-t">
+            <div className="flex justify-between items-center mb-2">
+              <label className="block text-sm font-bold text-gray-700">Canales Adicionales de Contacto</label>
+              <button 
+                type="button"
+                onClick={() => setSettings({...settings, contact_methods: [...(settings.contact_methods || []), { type: 'Email', details: '' }]})}
+                className="text-xs bg-blue-100 text-blue-800 px-3 py-1 rounded-full font-bold hover:bg-blue-200 transition"
+              >
+                + Añadir Medio
+              </button>
+            </div>
+            
+            {(!settings.contact_methods || settings.contact_methods.length === 0) && (
+              <p className="text-sm text-gray-400 italic mb-4">No hay otros canales configurados para el botón de Contáctenos.</p>
+            )}
+
+            <div className="space-y-3">
+              {(settings.contact_methods || []).map((method, index) => (
+                <div key={index} className="flex gap-2 items-center bg-blue-50 p-3 rounded-lg border border-blue-100">
+                  <select 
+                    value={method.type}
+                    onChange={(e) => {
+                      const newMethods = [...settings.contact_methods];
+                      newMethods[index].type = e.target.value;
+                      setSettings({...settings, contact_methods: newMethods});
+                    }}
+                    className="border rounded-md p-2 bg-white outline-none w-1/3"
+                  >
+                    <option value="Email">Email</option>
+                    <option value="Teléfono">Teléfono Adicional</option>
+                    <option value="Instagram">Instagram</option>
+                    <option value="Facebook">Facebook</option>
+                    <option value="Sitio Web">Link Externo</option>
+                  </select>
+                  
+                  <input 
+                    type="text" 
+                    required
+                    placeholder="Ej: ventas@vioplast.com o @vioplast_oficial" 
+                    value={method.details}
+                    onChange={(e) => {
+                      const newMethods = [...settings.contact_methods];
+                      newMethods[index].details = e.target.value;
+                      setSettings({...settings, contact_methods: newMethods});
+                    }}
+                    className="flex-grow border rounded-md p-2 bg-white outline-none"
+                  />
+                  
+                  <button 
+                    type="button" 
+                    onClick={() => {
+                      const newMethods = [...settings.contact_methods];
+                      newMethods.splice(index, 1);
+                      setSettings({...settings, contact_methods: newMethods});
+                    }}
+                    className="text-red-500 hover:bg-red-100 p-2 rounded transition"
+                  >
+                    <Trash2 size={20} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <button 
+            type="submit" 
+            disabled={savingSettings}
+            className="w-full bg-[#4a148c] text-white font-bold p-3 rounded-lg hover:bg-[#7c43bd] transition disabled:opacity-50"
+          >
+            {savingSettings ? 'Guardando...' : 'Guardar Configuraciones'}
+          </button>
+        </form>
       )}
     </div>
   );

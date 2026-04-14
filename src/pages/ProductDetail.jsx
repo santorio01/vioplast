@@ -1,13 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { ArrowLeft, CheckCircle, XCircle } from 'lucide-react';
+import { useCart } from '../lib/CartContext';
+import { ArrowLeft, CheckCircle, XCircle, ShoppingCart } from 'lucide-react';
 
 export default function ProductDetail() {
   const { id } = useParams();
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
   const [mainImage, setMainImage] = useState('');
+  const [quantity, setQuantity] = useState(1);
+  const { addToCart } = useCart();
 
   useEffect(() => {
     fetchProduct();
@@ -110,6 +113,22 @@ export default function ProductDetail() {
                   </div>
                 </div>
               )}
+            </div>
+
+            <div className="flex gap-4 mb-8">
+              <div className="flex items-center border-2 border-gray-100 rounded-xl bg-gray-50 overflow-hidden">
+                <button onClick={() => setQuantity(Math.max(1, quantity - 1))} className="px-4 py-3 font-bold text-[#4a148c] hover:bg-gray-200 transition">-</button>
+                <span className="px-4 font-bold text-gray-800 w-12 text-center">{quantity}</span>
+                <button onClick={() => setQuantity(quantity + 1)} disabled={quantity >= product.stock} className="px-4 py-3 font-bold text-[#4a148c] hover:bg-gray-200 transition disabled:opacity-50">+</button>
+              </div>
+              
+              <button 
+                onClick={() => { addToCart(product, quantity); alert('Producto agregado al carrito!'); }}
+                disabled={product.stock <= 0}
+                className="flex-grow bg-[#4a148c] hover:bg-[#7c43bd] text-white font-bold py-3 px-8 rounded-xl shadow-lg transition-transform hover:-translate-y-1 flex justify-center items-center gap-2 disabled:opacity-50"
+              >
+                <ShoppingCart size={20} /> Agregar al Carrito
+              </button>
             </div>
 
             <a 
