@@ -1,18 +1,28 @@
 import React, { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import Papa from 'papaparse';
-import { Package, Upload, Plus, Edit, Trash2, Search, X } from 'lucide-react';
+import { Package, Upload, Plus, Edit, Trash2, Search, X, Home, LogOut } from 'lucide-react';
 
 export default function AdminDashboard() {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('inventory'); // inventory, settings
+  const [configTab, setConfigTab] = useState('sales'); // sales, contact, company
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [isMediaUploading, setIsMediaUploading] = useState(false); // Para imágenes individuales
+  const [notification, setNotification] = useState({ message: '', type: null }); // success, error, info
   
-  // Settings State
-  const [settings, setSettings] = useState({ id: null, store_whatsapp: '', payment_methods: [], contact_methods: [] });
+  const [settings, setSettings] = useState({ 
+    id: null, 
+    store_whatsapp: '', 
+    payment_methods: [], 
+    contact_methods: [],
+    about_company: { text: '', address: '', imageUrl: '', mapEmbed: '', gallery: [] } 
+  });
   const [savingSettings, setSavingSettings] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [formData, setFormData] = useState({
@@ -144,52 +154,142 @@ export default function AdminDashboard() {
   };
 
   const filteredProducts = products.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()));
+  
+  const showNotification = (message, type = 'success') => {
+    setNotification({ message, type });
+    setTimeout(() => setNotification({ message: '', type: null }), 3000);
+  };
+
+  const uploadImage = async (file, path) => {
+    setIsMediaUploading(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Math.random().toString(36).substring(2)}-${Date.now()}.${fileExt}`;
+      const filePath = `${path}/${fileName}`;
+
+      const { data, error } = await supabase.storage
+        .from('vioplast-assets')
+        .upload(filePath, file);
+
+      if (error) throw error;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('vioplast-assets')
+        .getPublicUrl(filePath);
+
+      return publicUrl;
+    } catch (error) {
+      console.error('Error uploading:', error);
+      showNotification('Error cargando imagen. Verifica el bucket "vioplast-assets".', 'error');
+      return null;
+    } finally {
+      setIsMediaUploading(false);
+    }
+  };
+
+  const handleMediaUpload = async (e, callback, folder = 'misc') => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    // Validar tipo
+    if (!file.type.startsWith('image/')) {
+      alert('Por favor selecciona un archivo JPG o PNG');
+      return;
+    }
+
+    const url = await uploadImage(file, folder);
+    if (url) callback(url);
+    e.target.value = null; // Reset input
+  };
 
   const saveSettings = async (e) => {
     e.preventDefault();
     setSavingSettings(true);
     try {
+      // Función para limpiar URL de Google Maps si pegan el iframe
+      const getMapUrl = (input) => {
+        if (!input) return '';
+        if (input.includes('maps.app.goo.gl')) {
+          showNotification('¡Atención! Los enlaces cortos no funcionan. Usa el código de "Insertar Mapa" de Google Maps.', 'info');
+          return '';
+        }
+        if (input.includes('<iframe')) {
+          const match = input.match(/src="([^"]+)"/);
+          return match ? match[1] : input;
+        }
+        return input;
+      };
+
       const payload = {
         store_whatsapp: settings.store_whatsapp, 
         payment_methods: settings.payment_methods,
-        contact_methods: settings.contact_methods || []
+        contact_methods: settings.contact_methods || [],
+        about_company: {
+          ...(settings.about_company || {}),
+          mapEmbed: getMapUrl(settings.about_company?.mapEmbed)
+        }
       };
 
+      let result;
       if (settings.id) {
-        await supabase.from('settings').update(payload).eq('id', settings.id);
+        result = await supabase.from('settings').update(payload).eq('id', settings.id);
       } else {
-        await supabase.from('settings').insert([payload]);
+        result = await supabase.from('settings').insert([payload]);
       }
-      alert('Configuraciones guardadas');
+      
+      if (result.error) throw result.error;
+      showNotification('Configuraciones guardadas con éxito', 'success');
+      fetchSettings();
     } catch (error) {
-      alert('Error guardando ajustes');
+      console.error(error);
+      showNotification('Error guardando ajustes: ' + error.message, 'error');
     } finally {
       setSavingSettings(false);
     }
   };
 
+  const handleLogout = () => {
+    localStorage.removeItem('vioplast_client');
+    localStorage.removeItem('vioplast_admin');
+    navigate('/login');
+  };
+
   return (
+    <>
     <div className="max-w-7xl mx-auto px-4 py-8 w-full">
+      {/* Cabecera Superior con Navegación */}
       <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4 border-b pb-4">
         <div>
           <h1 className="text-3xl font-bold text-gray-800 flex items-center gap-2">
-            <Package className="text-[#4a148c]" /> Panel de Administración
+            <Package className="text-[#4608C2]" /> Panel de Administración
           </h1>
           <p className="text-gray-500">Administra Vioplast y tus métodos de pago.</p>
         </div>
-        <div className="flex gap-2">
-          <button 
-            onClick={() => setActiveTab('inventory')}
-            className={`px-6 py-2 rounded-lg font-bold transition ${activeTab === 'inventory' ? 'bg-[#4a148c] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
-          >
-            Inventario
-          </button>
+        
+        <div className="flex flex-col sm:flex-row gap-3 items-center">
+          <div className="flex gap-2 mr-4 border-r pr-4 border-gray-200">
+            <Link to="/" className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold text-gray-600 hover:bg-gray-100 transition">
+              <Home size={16} /> Ver Tienda
+            </Link>
+            <button onClick={handleLogout} className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold text-red-600 hover:bg-red-50 transition">
+              <LogOut size={16} /> Salir
+            </button>
+          </div>
+
+          <div className="flex gap-2">
+            <button 
+              onClick={() => setActiveTab('inventory')}
+              className={`px-6 py-2 rounded-lg font-bold transition ${activeTab === 'inventory' ? 'bg-[#4608C2] text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+            >
+              Inventario
+            </button>
           <button 
             onClick={() => setActiveTab('settings')}
-            className={`px-6 py-2 rounded-lg font-bold transition ${activeTab === 'settings' ? 'bg-[#4a148c] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+            className={`px-6 py-2 rounded-lg font-bold transition ${activeTab === 'settings' ? 'bg-[#4608C2] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
           >
-            Configuración Pagos
+            Configuración
           </button>
+        </div>
         </div>
       </div>
 
@@ -203,7 +303,7 @@ export default function AdminDashboard() {
             <input type="file" accept=".csv" className="hidden" onChange={handleFileUpload} />
           </label>
           
-          <button onClick={openCreateModal} className="flex items-center gap-2 bg-[#4a148c] hover:bg-[#7c43bd] text-white px-4 py-2 rounded-lg font-medium transition">
+          <button onClick={openCreateModal} className="flex items-center gap-2 bg-[#4608C2] hover:bg-[#6225e6] text-white px-4 py-2 rounded-lg font-medium transition">
             <Plus className="w-4 h-4" /> Nuevo Producto
           </button>
         </div>
@@ -217,7 +317,7 @@ export default function AdminDashboard() {
               placeholder="Buscar producto..." 
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#4a148c]"
+              className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#4608C2]"
             />
           </div>
         </div>
@@ -281,42 +381,58 @@ export default function AdminDashboard() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Nombre</label>
-                  <input required type="text" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full border rounded-lg p-2 focus:ring-2 focus:ring-[#4a148c] outline-none" />
+                  <input required type="text" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full border rounded-lg p-2 focus:ring-2 focus:ring-[#4608C2] outline-none" />
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Precio</label>
-                    <input required type="number" value={formData.price} onChange={e => setFormData({...formData, price: e.target.value})} className="w-full border rounded-lg p-2 focus:ring-2 focus:ring-[#4a148c] outline-none" />
+                    <input required type="number" value={formData.price} onChange={e => setFormData({...formData, price: e.target.value})} className="w-full border rounded-lg p-2 focus:ring-2 focus:ring-[#4608C2] outline-none" />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Stock</label>
-                    <input required type="number" value={formData.stock} onChange={e => setFormData({...formData, stock: e.target.value})} className="w-full border rounded-lg p-2 focus:ring-2 focus:ring-[#4a148c] outline-none" />
+                    <input required type="number" value={formData.stock} onChange={e => setFormData({...formData, stock: e.target.value})} className="w-full border rounded-lg p-2 focus:ring-2 focus:ring-[#4608C2] outline-none" />
                   </div>
                 </div>
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Descripción</label>
-                <textarea rows="3" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="w-full border rounded-lg p-2 focus:ring-2 focus:ring-[#4a148c] outline-none"></textarea>
+                <textarea rows="3" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="w-full border rounded-lg p-2 focus:ring-2 focus:ring-[#4608C2] outline-none"></textarea>
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Usos y Aplicaciones</label>
-                <textarea rows="2" value={formData.uses} onChange={e => setFormData({...formData, uses: e.target.value})} className="w-full border rounded-lg p-2 focus:ring-2 focus:ring-[#4a148c] outline-none"></textarea>
+                <textarea rows="2" value={formData.uses} onChange={e => setFormData({...formData, uses: e.target.value})} className="w-full border rounded-lg p-2 focus:ring-2 focus:ring-[#4608C2] outline-none"></textarea>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Imágenes (URLs)</label>
-                <div className="space-y-2">
-                  <input type="url" placeholder="URL Imagen Principal" value={formData.images[0]} onChange={e => {const imgs = [...formData.images]; imgs[0] = e.target.value; setFormData({...formData, images: imgs})}} className="w-full border rounded-lg p-2 focus:ring-2 focus:ring-[#4a148c] outline-none" />
-                  <input type="url" placeholder="URL Imagen 2" value={formData.images[1]} onChange={e => {const imgs = [...formData.images]; imgs[1] = e.target.value; setFormData({...formData, images: imgs})}} className="w-full border rounded-lg p-2 focus:ring-2 focus:ring-[#4a148c] outline-none" />
-                  <input type="url" placeholder="URL Imagen 3" value={formData.images[2]} onChange={e => {const imgs = [...formData.images]; imgs[2] = e.target.value; setFormData({...formData, images: imgs})}} className="w-full border rounded-lg p-2 focus:ring-2 focus:ring-[#4a148c] outline-none" />
+                <label className="block text-sm font-medium text-gray-700 mb-1">Imágenes (URLs o Subir)</label>
+                <div className="space-y-3">
+                  {[0, 1, 2].map(idx => (
+                    <div key={idx} className="flex gap-2">
+                      <input 
+                        type="text" 
+                        placeholder={`Imagen ${idx + 1}`}
+                        value={formData.images[idx] || ''} 
+                        onChange={e => {const imgs = [...formData.images]; imgs[idx] = e.target.value; setFormData({...formData, images: imgs})}} 
+                        className="flex-grow border rounded-lg p-2 focus:ring-2 focus:ring-[#4608C2] outline-none text-sm" 
+                      />
+                      <label className="cursor-pointer bg-gray-100 p-2 rounded-lg hover:bg-gray-200 transition text-gray-600">
+                        <Upload className="w-5 h-5" />
+                        <input type="file" accept="image/*" className="hidden" onChange={e => handleMediaUpload(e, (url) => {
+                          const imgs = [...formData.images];
+                          imgs[idx] = url;
+                          setFormData({...formData, images: imgs});
+                        }, 'products')} />
+                      </label>
+                    </div>
+                  ))}
                 </div>
               </div>
 
               <div className="pt-4 flex justify-end gap-2 border-t mt-6">
                 <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 border rounded-lg hover:bg-gray-50">Cancelar</button>
-                <button type="submit" className="px-4 py-2 bg-[#4a148c] text-white rounded-lg hover:bg-[#7c43bd]">Guardar</button>
+                <button type="submit" className="px-4 py-2 bg-[#4608C2] text-white rounded-lg hover:bg-[#6225e6]">Guardar</button>
               </div>
             </form>
           </div>
@@ -326,160 +442,283 @@ export default function AdminDashboard() {
       )}
 
       {activeTab === 'settings' && (
-        <form onSubmit={saveSettings} className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 max-w-3xl animate-fade-in mx-auto">
-          <h2 className="text-2xl font-bold text-[#4a148c] mb-6 border-b pb-2">Ajustes de Tienda</h2>
-          
-          <div className="mb-6">
-            <label className="block text-sm font-bold text-gray-700 mb-2">WhatsApp de Recepción de Pedidos</label>
-            <input 
-              type="text" 
-              required
-              value={settings.store_whatsapp || ''}
-              onChange={e => setSettings({...settings, store_whatsapp: e.target.value})}
-              placeholder="Ej: 573001234567"
-              className="w-full border rounded-lg p-3 focus:ring-2 focus:ring-[#4a148c] outline-none bg-gray-50" 
-            />
-            <p className="text-xs text-gray-500 mt-1">Ingresa el código de país sin el símbolo + seguido del número.</p>
+        <div className="animate-fade-in max-w-4xl mx-auto">
+          {/* Sub-tabs de Configuración */}
+          <div className="flex bg-gray-100 p-1 rounded-xl mb-6 shadow-inner">
+            <button 
+              onClick={() => setConfigTab('sales')}
+              className={`flex-1 py-2 rounded-lg text-sm font-bold transition ${configTab === 'sales' ? 'bg-white text-[#4608C2] shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+            >
+              Ventas y Pagos
+            </button>
+            <button 
+              onClick={() => setConfigTab('contact')}
+              className={`flex-1 py-2 rounded-lg text-sm font-bold transition ${configTab === 'contact' ? 'bg-white text-[#4608C2] shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+            >
+              Contacto
+            </button>
+            <button 
+              onClick={() => setConfigTab('company')}
+              className={`flex-1 py-2 rounded-lg text-sm font-bold transition ${configTab === 'company' ? 'bg-white text-[#4608C2] shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+            >
+              Institucional
+            </button>
           </div>
 
-          <div className="mb-6">
-            <div className="flex justify-between items-center mb-2">
-              <label className="block text-sm font-bold text-gray-700">Canales de Pago (Bancos, Nequi, etc.)</label>
-              <button 
-                type="button"
-                onClick={() => setSettings({...settings, payment_methods: [...(settings.payment_methods || []), { type: 'Nequi', details: '' }]})}
-                className="text-xs bg-green-100 text-green-800 px-3 py-1 rounded-full font-bold hover:bg-green-200 transition"
-              >
-                + Añadir Medio de Pago
-              </button>
-            </div>
-            
-            {(!settings.payment_methods || settings.payment_methods.length === 0) && (
-              <p className="text-sm text-gray-400 italic mb-4">No hay medios de pago configurados. Tus clientes no sabrán dónde pagar.</p>
+          <form onSubmit={saveSettings} className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 md:p-8">
+            {configTab === 'sales' && (
+              <div className="animate-fade-in space-y-8">
+                <div>
+                  <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">🛒 WhatsApp y Pagos</h3>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-2">WhatsApp de Recepción de Pedidos</label>
+                      <input 
+                        type="text" 
+                        required
+                        value={settings.store_whatsapp || ''}
+                        onChange={e => setSettings({...settings, store_whatsapp: e.target.value})}
+                        placeholder="Ej: 573001234567"
+                        className="w-full border rounded-lg p-3 focus:ring-2 focus:ring-[#4608C2] outline-none bg-gray-50" 
+                      />
+                      <p className="text-xs text-gray-500 mt-1">Ingresa el código de país sin el símbolo +.</p>
+                    </div>
+
+                    <div className="pt-4 border-t">
+                      <div className="flex justify-between items-center mb-4">
+                        <label className="block text-sm font-bold text-gray-700">Canales de Pago (Bancos, Nequi, etc.)</label>
+                        <button 
+                          type="button"
+                          onClick={() => setSettings({...settings, payment_methods: [...(settings.payment_methods || []), { type: 'Nequi', details: '' }]})}
+                          className="text-xs bg-green-100 text-green-800 px-3 py-1 rounded-full font-bold hover:bg-green-200 transition"
+                        >
+                          + Añadir Medio
+                        </button>
+                      </div>
+                      
+                      {(!settings.payment_methods || settings.payment_methods.length === 0) && (
+                        <p className="text-sm text-gray-400 italic">No hay medios de pago configurados.</p>
+                      )}
+
+                      <div className="space-y-3">
+                        {(settings.payment_methods || []).map((method, index) => (
+                          <div key={index} className="flex gap-2 items-center bg-gray-50 p-3 rounded-lg border border-gray-200">
+                            <select 
+                              value={method.type}
+                              onChange={(e) => {
+                                const newMethods = [...settings.payment_methods];
+                                newMethods[index].type = e.target.value;
+                                setSettings({...settings, payment_methods: newMethods});
+                              }}
+                              className="border rounded-md p-2 bg-white outline-none w-1/3"
+                            >
+                              <option value="Nequi">Nequi</option>
+                              <option value="Daviplata">Daviplata</option>
+                              <option value="Bancolombia">Bancolombia</option>
+                              <option value="Efectivo">Efectivo</option>
+                              <option value="Otro">Otro Banco</option>
+                            </select>
+                            <input 
+                              type="text" required
+                              placeholder="Detalles de la cuenta" 
+                              value={method.details}
+                              onChange={(e) => {
+                                const newMethods = [...settings.payment_methods];
+                                newMethods[index].details = e.target.value;
+                                setSettings({...settings, payment_methods: newMethods});
+                              }}
+                              className="flex-grow border rounded-md p-2 bg-white outline-none"
+                            />
+                            <button type="button" onClick={() => {
+                              const newMethods = [...settings.payment_methods];
+                              newMethods.splice(index, 1);
+                              setSettings({...settings, payment_methods: newMethods});
+                            }} className="text-red-500 p-2"><Trash2 size={20} /></button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             )}
 
-            <div className="space-y-3">
-              {(settings.payment_methods || []).map((method, index) => (
-                <div key={index} className="flex gap-2 items-center bg-gray-50 p-3 rounded-lg border border-gray-200">
-                  <select 
-                    value={method.type}
-                    onChange={(e) => {
-                      const newMethods = [...settings.payment_methods];
-                      newMethods[index].type = e.target.value;
-                      setSettings({...settings, payment_methods: newMethods});
-                    }}
-                    className="border rounded-md p-2 bg-white outline-none w-1/3"
-                  >
-                    <option value="Nequi">Nequi</option>
-                    <option value="Daviplata">Daviplata</option>
-                    <option value="Bancolombia">Bancolombia</option>
-                    <option value="Efectivo">Efectivo</option>
-                    <option value="Otro">Otro Banco</option>
-                  </select>
+            {configTab === 'contact' && (
+              <div className="animate-fade-in space-y-8">
+                <div>
+                  <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">📞 Medios de Contacto</h3>
+                  <div className="flex justify-between items-center mb-4">
+                    <p className="text-sm text-gray-500 italic">Estos canales aparecerán en el botón flotante de ayuda.</p>
+                    <button 
+                      type="button"
+                      onClick={() => setSettings({...settings, contact_methods: [...(settings.contact_methods || []), { type: 'Email', details: '' }]})}
+                      className="text-xs bg-blue-100 text-blue-800 px-3 py-1 rounded-full font-bold hover:bg-blue-200 transition"
+                    >
+                      + Añadir Canal
+                    </button>
+                  </div>
                   
-                  <input 
-                    type="text" 
-                    required
-                    placeholder="Detalles (Ej: Cta Ahorros 123456 a nombre de Juan)" 
-                    value={method.details}
-                    onChange={(e) => {
-                      const newMethods = [...settings.payment_methods];
-                      newMethods[index].details = e.target.value;
-                      setSettings({...settings, payment_methods: newMethods});
-                    }}
-                    className="flex-grow border rounded-md p-2 bg-white outline-none"
-                  />
-                  
-                  <button 
-                    type="button" 
-                    onClick={() => {
-                      const newMethods = [...settings.payment_methods];
-                      newMethods.splice(index, 1);
-                      setSettings({...settings, payment_methods: newMethods});
-                    }}
-                    className="text-red-500 hover:bg-red-100 p-2 rounded transition"
-                  >
-                    <Trash2 size={20} />
-                  </button>
+                  <div className="space-y-3">
+                    {(settings.contact_methods || []).map((method, index) => (
+                      <div key={index} className="flex gap-2 items-center bg-blue-50 p-3 rounded-lg border border-blue-100">
+                        <select 
+                          value={method.type}
+                          onChange={(e) => {
+                            const newMethods = [...settings.contact_methods];
+                            newMethods[index].type = e.target.value;
+                            setSettings({...settings, contact_methods: newMethods});
+                          }}
+                          className="border rounded-md p-2 bg-white outline-none w-1/3"
+                        >
+                          <option value="Email">Email</option>
+                          <option value="Teléfono">Teléfono</option>
+                          <option value="Instagram">Instagram</option>
+                          <option value="Facebook">Facebook</option>
+                          <option value="Sitio Web">Link Externo</option>
+                        </select>
+                        <input 
+                          type="text" required
+                          placeholder="Ej: ventas@vioplast.com" 
+                          value={method.details}
+                          onChange={(e) => {
+                            const newMethods = [...settings.contact_methods];
+                            newMethods[index].details = e.target.value;
+                            setSettings({...settings, contact_methods: newMethods});
+                          }}
+                          className="flex-grow border rounded-md p-2 bg-white outline-none"
+                        />
+                        <button type="button" onClick={() => {
+                          const newMethods = [...settings.contact_methods];
+                          newMethods.splice(index, 1);
+                          setSettings({...settings, contact_methods: newMethods});
+                        }} className="text-red-500 p-2"><Trash2 size={20} /></button>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              ))}
-            </div>
-          </div>
-
-          {/* NUEVO: Canales de Contacto */}
-          <div className="mb-8 pt-6 border-t">
-            <div className="flex justify-between items-center mb-2">
-              <label className="block text-sm font-bold text-gray-700">Canales Adicionales de Contacto</label>
-              <button 
-                type="button"
-                onClick={() => setSettings({...settings, contact_methods: [...(settings.contact_methods || []), { type: 'Email', details: '' }]})}
-                className="text-xs bg-blue-100 text-blue-800 px-3 py-1 rounded-full font-bold hover:bg-blue-200 transition"
-              >
-                + Añadir Medio
-              </button>
-            </div>
-            
-            {(!settings.contact_methods || settings.contact_methods.length === 0) && (
-              <p className="text-sm text-gray-400 italic mb-4">No hay otros canales configurados para el botón de Contáctenos.</p>
+              </div>
             )}
 
-            <div className="space-y-3">
-              {(settings.contact_methods || []).map((method, index) => (
-                <div key={index} className="flex gap-2 items-center bg-blue-50 p-3 rounded-lg border border-blue-100">
-                  <select 
-                    value={method.type}
-                    onChange={(e) => {
-                      const newMethods = [...settings.contact_methods];
-                      newMethods[index].type = e.target.value;
-                      setSettings({...settings, contact_methods: newMethods});
-                    }}
-                    className="border rounded-md p-2 bg-white outline-none w-1/3"
-                  >
-                    <option value="Email">Email</option>
-                    <option value="Teléfono">Teléfono Adicional</option>
-                    <option value="Instagram">Instagram</option>
-                    <option value="Facebook">Facebook</option>
-                    <option value="Sitio Web">Link Externo</option>
-                  </select>
-                  
-                  <input 
-                    type="text" 
-                    required
-                    placeholder="Ej: ventas@vioplast.com o @vioplast_oficial" 
-                    value={method.details}
-                    onChange={(e) => {
-                      const newMethods = [...settings.contact_methods];
-                      newMethods[index].details = e.target.value;
-                      setSettings({...settings, contact_methods: newMethods});
-                    }}
-                    className="flex-grow border rounded-md p-2 bg-white outline-none"
-                  />
-                  
-                  <button 
-                    type="button" 
-                    onClick={() => {
-                      const newMethods = [...settings.contact_methods];
-                      newMethods.splice(index, 1);
-                      setSettings({...settings, contact_methods: newMethods});
-                    }}
-                    className="text-red-500 hover:bg-red-100 p-2 rounded transition"
-                  >
-                    <Trash2 size={20} />
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
+            {configTab === 'company' && (
+              <div className="animate-fade-in space-y-8">
+                <div>
+                  <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">🏢 Perfil Institucional</h3>
+                  <div className="space-y-6">
+                    <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-1">Historia / Misión</label>
+                      <textarea
+                        rows="4"
+                        value={settings.about_company?.text || ''}
+                        onChange={(e) => setSettings({...settings, about_company: {...settings.about_company, text: e.target.value}})}
+                        className="w-full border rounded-lg p-3 bg-gray-50 outline-none focus:ring-2 focus:ring-[#4608C2]"
+                        placeholder="Nuestra misión es..."
+                      ></textarea>
+                    </div>
 
-          <button 
-            type="submit" 
-            disabled={savingSettings}
-            className="w-full bg-[#4a148c] text-white font-bold p-3 rounded-lg hover:bg-[#7c43bd] transition disabled:opacity-50"
-          >
-            {savingSettings ? 'Guardando...' : 'Guardar Configuraciones'}
-          </button>
-        </form>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-bold text-gray-700 mb-1">Dirección Física</label>
+                        <input
+                          type="text"
+                          value={settings.about_company?.address || ''}
+                          onChange={(e) => setSettings({...settings, about_company: {...settings.about_company, address: e.target.value}})}
+                          className="w-full border rounded-lg p-3 bg-gray-50 outline-none focus:ring-2 focus:ring-[#4608C2]"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-bold text-gray-700 mb-1">URL Imagen Hero / Subir</label>
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            value={settings.about_company?.imageUrl || ''}
+                            onChange={(e) => setSettings({...settings, about_company: {...settings.about_company, imageUrl: e.target.value}})}
+                            className="flex-grow border rounded-lg p-3 bg-gray-50 outline-none focus:ring-2 focus:ring-[#4608C2]"
+                          />
+                          <label className="cursor-pointer bg-gray-100 p-3 rounded-lg hover:bg-gray-200 transition text-gray-600 self-center">
+                            <Upload className="w-5 h-5" />
+                            <input type="file" accept="image/*" className="hidden" onChange={e => handleMediaUpload(e, (url) => {
+                              setSettings({...settings, about_company: {...settings.about_company, imageUrl: url}});
+                            }, 'about')} />
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="pt-4 border-t">
+                      <label className="block text-sm font-bold text-gray-700 mb-1">Mapa Interactivo (Iframe)</label>
+                      <input
+                        type="text"
+                        value={settings.about_company?.mapEmbed || ''}
+                        onChange={(e) => setSettings({...settings, about_company: {...settings.about_company, mapEmbed: e.target.value}})}
+                        className="w-full border rounded-lg p-3 bg-gray-50 outline-none focus:ring-2 focus:ring-[#4608C2]"
+                        placeholder="Pega el iframe de Google Maps aquí"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">Puedes pegar el código completo que te da Google Maps, el sistema lo limpiará automáticamente.</p>
+                    </div>
+
+                    <div className="pt-4 border-t">
+                      <label className="block text-sm font-bold text-gray-700 mb-3">Galería (Hasta 6 imágenes)</label>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {[0, 1, 2, 3, 4, 5].map((idx) => (
+                          <div key={idx} className="flex gap-2">
+                            <input
+                              type="text"
+                              placeholder={`Imagen ${idx + 1}`}
+                              value={settings.about_company?.gallery?.[idx] || ''}
+                              onChange={(e) => {
+                                const newGallery = [...(settings.about_company?.gallery || [])];
+                                while (newGallery.length <= idx) newGallery.push('');
+                                newGallery[idx] = e.target.value;
+                                setSettings({...settings, about_company: {...settings.about_company, gallery: newGallery}});
+                              }}
+                              className="flex-grow border rounded-lg p-2 text-sm bg-gray-50 outline-none focus:ring-2 focus:ring-[#4608C2]"
+                            />
+                            <label className="cursor-pointer bg-gray-200 p-2 rounded-lg hover:bg-gray-300 transition text-gray-600">
+                              <Upload className="w-4 h-4" />
+                              <input type="file" accept="image/*" className="hidden" onChange={e => handleMediaUpload(e, (url) => {
+                                const newGallery = [...(settings.about_company?.gallery || [])];
+                                while (newGallery.length <= idx) newGallery.push('');
+                                newGallery[idx] = url;
+                                setSettings({...settings, about_company: {...settings.about_company, gallery: newGallery}});
+                              }, 'about/gallery')} />
+                            </label>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="mt-10 pt-6 border-t">
+              <button 
+                type="submit" 
+                disabled={savingSettings}
+                className="w-full bg-[#4608C2] text-white font-bold py-4 rounded-xl hover:bg-[#6225e6] transition-transform hover:-translate-y-1 shadow-lg disabled:opacity-50"
+              >
+                {savingSettings ? 'Guardando Cambios...' : '💾 Guardar Todo'}
+              </button>
+            </div>
+          </form>
+        </div>
       )}
     </div>
+
+    {/* Toast Notification */}
+    {notification.message && (
+      <div className={`fixed bottom-10 right-10 z-[100] animate-bounce-in`}>
+        <div className={`flex items-center gap-3 px-6 py-4 rounded-2xl shadow-2xl border-l-8 backdrop-blur-md ${
+          notification.type === 'success' ? 'bg-green-50/90 text-green-800 border-green-500' : 
+          notification.type === 'error' ? 'bg-red-50/90 text-red-800 border-red-500' : 
+          'bg-blue-50/90 text-blue-800 border-blue-500'
+        }`}>
+          {notification.type === 'success' ? <div className="bg-green-500 p-1 rounded-full text-white"><X size={16} className="rotate-45" /></div> : 
+           notification.type === 'error' ? <X className="text-red-500" /> : <Search className="text-blue-500" />}
+          <p className="font-bold">{notification.message}</p>
+        </div>
+      </div>
+    )}
+    </>
   );
 }

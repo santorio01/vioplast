@@ -52,6 +52,7 @@ CREATE TABLE "Produccion".settings (
     store_whatsapp TEXT NOT NULL DEFAULT '573000000000',
     payment_methods JSONB NOT NULL DEFAULT '[]', -- [{id: 'Nequi', details: 'Ahorros 300...'}...]
     contact_methods JSONB NOT NULL DEFAULT '[]', -- [{type: 'Email', details: 'ventas@vioplast.com'}]
+    about_company JSONB NOT NULL DEFAULT '{"text": "Bajo la visión de ofrecer empaques y dotaciones plásticas de la más alta calidad, nacimos para suplir de manera eficiente a hogares, negocios e industrias.", "address": "Sede Principal, Bogotá", "imageUrl": ""}',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
@@ -82,11 +83,12 @@ CREATE POLICY "Enable all for settings" ON "Produccion".settings USING (true) WI
 
 -- Administrador y Ajustes por Defecto
 INSERT INTO "Produccion".admins (username, password) VALUES ('admin', 'admin123');
-INSERT INTO "Produccion".settings (store_whatsapp, payment_methods, contact_methods) 
+INSERT INTO "Produccion".settings (store_whatsapp, payment_methods, contact_methods, about_company) 
 VALUES (
     '573000000000', 
     '[{"type": "Nequi", "details": "3000000000 - Carlos V."}]', 
-    '[{"type": "Email", "details": "soporte@vioplast.com"}]'
+    '[{"type": "Email", "details": "soporte@vioplast.com"}]',
+    '{"text": "Bajo la visión de ofrecer empaques y dotaciones plásticas de la más alta calidad, nacimos para suplir de manera eficiente a hogares, negocios e industrias. Comprometidos con el cumplimiento y el servicio, proveemos todo tu embalaje.", "address": "Sede Central de Distribución y Ventas, Bogotá", "imageUrl": "https://images.unsplash.com/photo-1542744173-8e7e53415bb0?ixlib=rb-4.0.3&auto=format&fit=crop&w=1470&q=80"}'
 );
 
 -- Insertar Productos de Prueba (Con Imágenes Generadas por IA)

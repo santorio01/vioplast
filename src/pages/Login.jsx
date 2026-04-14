@@ -75,7 +75,7 @@ export default function Login() {
       <div className="bg-white rounded-3xl shadow-xl w-full max-w-md p-8">
         
         {view !== 'roles' && (
-          <button onClick={() => setView('roles')} className="text-gray-500 hover:text-[#4a148c] mb-6 flex items-center">
+          <button onClick={() => setView('roles')} className="text-gray-500 hover:text-[#4608C2] mb-6 flex items-center">
             <ArrowLeft className="w-4 h-4 mr-2" /> Atrás
           </button>
         )}
@@ -102,9 +102,9 @@ export default function Login() {
 
               <button 
                 onClick={() => setView('admin')}
-                className="w-full flex items-center p-4 border-2 border-gray-100 rounded-xl hover:border-[#4a148c] hover:bg-purple-50 transition"
+                className="w-full flex items-center p-4 border-2 border-gray-100 rounded-xl hover:border-[#4608C2] hover:bg-purple-50 transition"
               >
-                <div className="bg-purple-100 p-3 rounded-full text-[#4a148c] mr-4">
+                <div className="bg-purple-100 p-3 rounded-full text-[#4608C2] mr-4">
                   <Store size={24} />
                 </div>
                 <div className="text-left flex-grow">
@@ -140,15 +140,15 @@ export default function Login() {
             
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-1">Usuario Admin</label>
-              <input required type="text" value={email} onChange={e => setEmail(e.target.value)} placeholder="Ej: admin" className="w-full border rounded-lg p-3 focus:ring-2 focus:ring-[#4a148c] outline-none" />
+              <input required type="text" value={email} onChange={e => setEmail(e.target.value)} placeholder="Ej: admin" className="w-full border rounded-lg p-3 focus:ring-2 focus:ring-[#4608C2] outline-none" />
             </div>
 
             <div className="mb-6">
               <label className="block text-sm font-medium text-gray-700 mb-1">Contraseña</label>
-              <input required type="password" value={password} onChange={e => setPassword(e.target.value)} className="w-full border rounded-lg p-3 focus:ring-2 focus:ring-[#4a148c] outline-none" />
+              <input required type="password" value={password} onChange={e => setPassword(e.target.value)} className="w-full border rounded-lg p-3 focus:ring-2 focus:ring-[#4608C2] outline-none" />
             </div>
 
-            <button type="submit" disabled={loading} className="w-full bg-[#4a148c] hover:bg-[#7c43bd] text-white font-bold p-3 rounded-lg shadow-md transition disabled:opacity-50">
+            <button type="submit" disabled={loading} className="w-full bg-[#4608C2] hover:bg-[#6225e6] text-white font-bold p-3 rounded-lg shadow-md transition disabled:opacity-50">
               {loading ? 'Verificando...' : 'Entrar a Panel'}
             </button>
           </form>

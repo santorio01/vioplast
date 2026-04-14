@@ -41,7 +41,7 @@ export default function ProductDetail() {
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#4a148c]"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#4608C2]"></div>
       </div>
     );
   }
@@ -50,7 +50,7 @@ export default function ProductDetail() {
     return (
       <div className="max-w-7xl mx-auto px-4 py-12 text-center">
         <h2 className="text-2xl font-bold text-gray-800">Producto no encontrado</h2>
-        <Link to="/" className="text-[#4a148c] mt-4 inline-block hover:underline">Volver al catálogo</Link>
+        <Link to="/" className="text-[#4608C2] mt-4 inline-block hover:underline">Volver al catálogo</Link>
       </div>
     );
   }
@@ -59,7 +59,7 @@ export default function ProductDetail() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 md:py-12">
-      <Link to="/" className="inline-flex items-center text-gray-500 hover:text-[#4a148c] mb-6 transition-colors">
+      <Link to="/" className="inline-flex items-center text-gray-500 hover:text-[#4608C2] mb-6 transition-colors">
         <ArrowLeft className="w-4 h-4 mr-2" /> Volver al catálogo
       </Link>
 
@@ -77,7 +77,7 @@ export default function ProductDetail() {
                 <button 
                   key={idx}
                   onClick={() => setMainImage(img)}
-                  className={`w-20 h-20 rounded-xl overflow-hidden border-2 transition-all ${mainImage === img ? 'border-[#4a148c] scale-105' : 'border-transparent opacity-70 hover:opacity-100'}`}
+                  className={`w-20 h-20 rounded-xl overflow-hidden border-2 transition-all ${mainImage === img ? 'border-[#4608C2] scale-105' : 'border-transparent opacity-70 hover:opacity-100'}`}
                 >
                   <img src={img} alt={`${product.name} ${idx + 1}`} className="w-full h-full object-cover" />
                 </button>
@@ -98,7 +98,7 @@ export default function ProductDetail() {
                 </span>
               )}
               <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">{product.name}</h1>
-              <p className="text-3xl font-extrabold text-[#4a148c] mb-6">${Number(product.price).toLocaleString()}</p>
+              <p className="text-3xl font-extrabold text-[#4608C2] mb-6">${Number(product.price).toLocaleString()}</p>
             </div>
 
             <div className="prose prose-sm md:prose-base text-gray-600 mb-8">
@@ -117,15 +117,15 @@ export default function ProductDetail() {
 
             <div className="flex gap-4 mb-8">
               <div className="flex items-center border-2 border-gray-100 rounded-xl bg-gray-50 overflow-hidden">
-                <button onClick={() => setQuantity(Math.max(1, quantity - 1))} className="px-4 py-3 font-bold text-[#4a148c] hover:bg-gray-200 transition">-</button>
+                <button onClick={() => setQuantity(Math.max(1, quantity - 1))} className="px-4 py-3 font-bold text-[#4608C2] hover:bg-gray-200 transition">-</button>
                 <span className="px-4 font-bold text-gray-800 w-12 text-center">{quantity}</span>
-                <button onClick={() => setQuantity(quantity + 1)} disabled={quantity >= product.stock} className="px-4 py-3 font-bold text-[#4a148c] hover:bg-gray-200 transition disabled:opacity-50">+</button>
+                <button onClick={() => setQuantity(quantity + 1)} disabled={quantity >= product.stock} className="px-4 py-3 font-bold text-[#4608C2] hover:bg-gray-200 transition disabled:opacity-50">+</button>
               </div>
               
               <button 
                 onClick={() => { addToCart(product, quantity); alert('Producto agregado al carrito!'); }}
                 disabled={product.stock <= 0}
-                className="flex-grow bg-[#4a148c] hover:bg-[#7c43bd] text-white font-bold py-3 px-8 rounded-xl shadow-lg transition-transform hover:-translate-y-1 flex justify-center items-center gap-2 disabled:opacity-50"
+                className="flex-grow bg-[#4608C2] hover:bg-[#6225e6] text-white font-bold py-3 px-8 rounded-xl shadow-lg transition-transform hover:-translate-y-1 flex justify-center items-center gap-2 disabled:opacity-50"
               >
                 <ShoppingCart size={20} /> Agregar al Carrito
               </button>

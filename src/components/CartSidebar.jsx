@@ -146,12 +146,12 @@ export default function CartSidebar() {
       <div className={`fixed top-0 right-0 h-full w-full sm:w-[450px] bg-white shadow-2xl z-50 transform transition-transform duration-300 flex flex-col ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}>
         
         {/* HEADER */}
-        <div className="p-6 bg-[#4a148c] text-white flex justify-between items-center shadow-md">
+        <div className="p-6 bg-[#4608C2] text-white flex justify-between items-center shadow-md">
           <h2 className="text-xl font-bold flex items-center gap-2">
-            {step > 1 && <button onClick={() => setStep(step - 1)} className="hover:bg-[#7c43bd] p-1 rounded-full"><ArrowLeft size={20}/></button>}
+            {step > 1 && <button onClick={() => setStep(step - 1)} className="hover:bg-[#6225e6] p-1 rounded-full"><ArrowLeft size={20}/></button>}
             {step === 1 ? 'Tu Pedido' : step === 2 ? 'Tus Datos' : 'Realizar Pago'}
           </h2>
-          <button onClick={() => setIsOpen(false)} className="hover:bg-[#7c43bd] p-1 rounded-full transition">
+          <button onClick={() => setIsOpen(false)} className="hover:bg-[#6225e6] p-1 rounded-full transition">
             <X size={24} />
           </button>
         </div>
@@ -172,7 +172,7 @@ export default function CartSidebar() {
                     <div className="flex-grow">
                       <h4 className="font-bold text-gray-800 text-sm leading-tight line-clamp-2">{item.name}</h4>
                       <p className="text-gray-500 text-xs mt-1">Ctd: {item.quantity}</p>
-                      <p className="text-[#4a148c] font-bold text-sm mt-1">${(item.price * item.quantity).toLocaleString()}</p>
+                      <p className="text-[#4608C2] font-bold text-sm mt-1">${(item.price * item.quantity).toLocaleString()}</p>
                     </div>
                     <button onClick={() => removeFromCart(item.id)} className="text-red-500 hover:bg-red-100 p-2 rounded-lg transition">
                       <Trash2 size={18} />
@@ -191,7 +191,7 @@ export default function CartSidebar() {
                     placeholder="Ejemplo: Necesito bolsas de otro color." 
                     value={customRequest}
                     onChange={e => setCustomRequest(e.target.value)}
-                    className="w-full border rounded-lg p-3 text-sm focus:ring-[#4a148c] outline-none bg-gray-50"
+                    className="w-full border rounded-lg p-3 text-sm focus:ring-[#4608C2] outline-none bg-gray-50"
                   />
                 </div>
               )}
@@ -201,7 +201,7 @@ export default function CartSidebar() {
               <div className="p-6 border-t bg-gray-50">
                 <div className="flex justify-between items-center mb-4">
                   <span className="text-gray-600 font-medium">Total a Pagar</span>
-                  <span className="text-2xl font-bold text-[#4a148c]">${totalPrice.toLocaleString()}</span>
+                  <span className="text-2xl font-bold text-[#4608C2]">${totalPrice.toLocaleString()}</span>
                 </div>
                 <button onClick={proceedToData} className="w-full bg-[#00e676] hover:bg-[#00c853] text-black font-bold py-4 rounded-xl shadow-lg transition-transform hover:-translate-y-1 flex items-center justify-center gap-2">
                   Continuar al Check-Out
@@ -218,23 +218,23 @@ export default function CartSidebar() {
             <div className="space-y-4 flex-grow">
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-1">Cédula / NIT *</label>
-                <input required type="text" value={clientForm.cedula} onChange={e => setClientForm({...clientForm, cedula: e.target.value})} className="w-full border rounded-lg p-3 bg-gray-50 outline-none focus:border-[#4a148c]" />
+                <input required type="text" value={clientForm.cedula} onChange={e => setClientForm({...clientForm, cedula: e.target.value})} className="w-full border rounded-lg p-3 bg-gray-50 outline-none focus:border-[#4608C2]" />
               </div>
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-1">Nombre Completo *</label>
-                <input required type="text" value={clientForm.name} onChange={e => setClientForm({...clientForm, name: e.target.value})} className="w-full border rounded-lg p-3 bg-gray-50 outline-none focus:border-[#4a148c]" />
+                <input required type="text" value={clientForm.name} onChange={e => setClientForm({...clientForm, name: e.target.value})} className="w-full border rounded-lg p-3 bg-gray-50 outline-none focus:border-[#4608C2]" />
               </div>
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-1">Correo Electrónico *</label>
-                <input required type="email" value={clientForm.email} onChange={e => setClientForm({...clientForm, email: e.target.value})} className="w-full border rounded-lg p-3 bg-gray-50 outline-none focus:border-[#4a148c]" />
+                <input required type="email" value={clientForm.email} onChange={e => setClientForm({...clientForm, email: e.target.value})} className="w-full border rounded-lg p-3 bg-gray-50 outline-none focus:border-[#4608C2]" />
               </div>
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-1">Celular / Teléfono *</label>
-                <input required type="text" value={clientForm.phone} onChange={e => setClientForm({...clientForm, phone: e.target.value})} className="w-full border rounded-lg p-3 bg-gray-50 outline-none focus:border-[#4a148c]" />
+                <input required type="text" value={clientForm.phone} onChange={e => setClientForm({...clientForm, phone: e.target.value})} className="w-full border rounded-lg p-3 bg-gray-50 outline-none focus:border-[#4608C2]" />
               </div>
             </div>
             
-            <button type="submit" disabled={loading} className="w-full mt-6 bg-[#4a148c] text-white font-bold py-4 rounded-xl shadow-lg hover:bg-[#7c43bd] transition disabled:opacity-50">
+            <button type="submit" disabled={loading} className="w-full mt-6 bg-[#4608C2] text-white font-bold py-4 rounded-xl shadow-lg hover:bg-[#6225e6] transition disabled:opacity-50">
               {loading ? 'Validando...' : 'Ir al Pago'}
             </button>
           </form>
@@ -254,7 +254,7 @@ export default function CartSidebar() {
               ) : (
                 settings.payment_methods.map((pm, i) => (
                   <div key={i} className="bg-gradient-to-r from-gray-50 to-white border p-4 rounded-xl shadow-sm text-sm">
-                    <span className="font-bold text-[#4a148c] uppercase tracking-wider">{pm.type}</span>
+                    <span className="font-bold text-[#4608C2] uppercase tracking-wider">{pm.type}</span>
                     <p className="text-gray-800 mt-1">{pm.details}</p>
                   </div>
                 ))

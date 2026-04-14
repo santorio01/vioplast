@@ -72,7 +72,7 @@ export default function ContactWidget() {
     <>
       <button 
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-6 left-6 bg-[#4a148c] text-white shadow-2xl p-4 rounded-full hover:bg-[#7c43bd] transition-transform hover:scale-110 z-40 flex items-center justify-center gap-2 group"
+        className="fixed bottom-6 left-6 bg-[#4608C2] text-white shadow-2xl p-4 rounded-full hover:bg-[#6225e6] transition-transform hover:scale-110 z-40 flex items-center justify-center gap-2 group"
         title="Contáctenos"
       >
         <MessageSquareText size={28} />
@@ -81,12 +81,12 @@ export default function ContactWidget() {
       {isOpen && (
         <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4 animate-fade-in" onClick={() => setIsOpen(false)}>
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden" onClick={e => e.stopPropagation()}>
-            <div className="bg-[#4a148c] p-6 text-white flex justify-between items-center relative">
+            <div className="bg-[#4608C2] p-6 text-white flex justify-between items-center relative">
               <div>
                 <h3 className="text-xl font-bold">Contáctenos</h3>
                 <p className="text-sm opacity-80 mt-1">¿Tienes dudas o buscas otros productos?</p>
               </div>
-              <button onClick={() => setIsOpen(false)} className="hover:bg-[#7c43bd] p-2 rounded-full absolute top-4 right-4 transition">
+              <button onClick={() => setIsOpen(false)} className="hover:bg-[#6225e6] p-2 rounded-full absolute top-4 right-4 transition">
                 <X size={20} />
               </button>
             </div>
@@ -105,7 +105,7 @@ export default function ContactWidget() {
               {channels.length > 0 && <span className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Otros Canales Oficiales</span>}
 
               {channels.map((ch, i) => (
-                <div key={i} onClick={() => handleAction(ch)} className="flex items-center gap-4 p-4 border rounded-xl hover:bg-gray-50 hover:border-[#4a148c] cursor-pointer transition">
+                <div key={i} onClick={() => handleAction(ch)} className="flex items-center gap-4 p-4 border rounded-xl hover:bg-gray-50 hover:border-[#4608C2] cursor-pointer transition">
                   <div className="bg-gray-100 p-2 rounded-lg">
                     {getIconForType(ch.type)}
                   </div>

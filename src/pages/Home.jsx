@@ -50,18 +50,30 @@ export default function Home() {
   return (
     <div className="flex flex-col min-h-screen">
       {/* Hero Section */}
-      <section className="bg-gradient-to-r from-[#4a148c] to-[#7c43bd] text-white py-12 md:py-20 px-4 text-center">
+      <section className="bg-gradient-to-r from-[#4608C2] to-[#6225e6] text-white py-12 md:py-20 px-4 text-center">
         <h1 className="text-4xl md:text-5xl font-bold mb-4">Soluciones en Plásticos y Empaques</h1>
-        <p className="text-lg md:text-xl max-w-2xl mx-auto opacity-90">
+        <p className="text-lg md:text-xl max-w-2xl mx-auto opacity-90 mb-8">
           Encuentra la mejor calidad en morrales, bolsas y plásticos para tu negocio u hogar en Vioplast.
         </p>
+        <div className="flex justify-center gap-4">
+          <a href="#catalogo" className="bg-[#00e676] text-black font-bold px-8 py-3 rounded-full hover:bg-white transition-all shadow-lg transform hover:scale-105">
+            Ver Catálogo
+          </a>
+          <Link to="/sobre-nosotros" className="bg-white/10 backdrop-blur-md border border-white/20 text-white font-bold px-8 py-3 rounded-full hover:bg-white/20 transition-all shadow-lg transform hover:scale-105">
+            Quiénes Somos
+          </Link>
+        </div>
       </section>
+
+      {/* Catálogo Anchor */}
+      <div id="catalogo"></div>
+
 
       {/* Historial de Compras (Solo para clientes) */}
       {client && (
         <section className="bg-purple-50 border-b border-purple-100">
           <div className="max-w-7xl mx-auto px-4 py-8">
-            <h2 className="text-xl font-bold text-[#4a148c] mb-4 flex items-center gap-2">
+            <h2 className="text-xl font-bold text-[#4608C2] mb-4 flex items-center gap-2">
               <Clock size={24} /> Tus últimas compras
             </h2>
             
@@ -86,7 +98,7 @@ export default function Home() {
                     </ul>
                     <button 
                       onClick={() => order.items.forEach(item => addToCart(item, item.quantity))}
-                      className="w-full text-center text-sm font-bold text-[#4a148c] bg-purple-50 hover:bg-purple-100 py-2 rounded-lg transition"
+                      className="w-full text-center text-sm font-bold text-[#4608C2] bg-purple-50 hover:bg-purple-100 py-2 rounded-lg transition"
                     >
                       Volver a pedir esto
                     </button>
@@ -107,7 +119,7 @@ export default function Home() {
 
         {loading ? (
           <div className="flex justify-center items-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#4a148c]"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#4608C2]"></div>
           </div>
         ) : products.length === 0 ? (
           <div className="text-center py-20 bg-gray-50 rounded-xl border border-dashed border-gray-300">
@@ -139,10 +151,10 @@ export default function Home() {
 
                 <div className="p-5 flex flex-col flex-grow">
                   <Link to={`/product/${product.id}`}>
-                    <h3 className="font-semibold text-gray-800 text-lg mb-1 line-clamp-2 hover:text-[#4a148c] transition">{product.name}</h3>
+                    <h3 className="font-semibold text-gray-800 text-lg mb-1 line-clamp-2 hover:text-[#4608C2] transition">{product.name}</h3>
                   </Link>
                   <div className="mt-auto pt-4 flex justify-between items-center">
-                    <span className="text-[#4a148c] font-bold text-xl">${Number(product.price).toLocaleString()}</span>
+                    <span className="text-[#4608C2] font-bold text-xl">${Number(product.price).toLocaleString()}</span>
                     
                     <button 
                       onClick={() => addToCart(product)}

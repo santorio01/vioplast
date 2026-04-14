@@ -1,10 +1,10 @@
 @import "tailwindcss";
 
 @theme {
-  --color-primary: #4a148c; /* Morado estilo Vioplast */
-  --color-primary-light: #7c43bd;
-  --color-primary-dark: #12005e;
-  --color-accent: #00e676; /* Acentos verdes */
+  --color-primary: #4608C2; /* Morado exacto Vioplast */
+  --color-primary-light: #6225e6;
+  --color-primary-dark: #2d058a;
+  --color-accent: #00e676; /* Verde Neón oficial */
   --color-background: #ffffff;
   --color-text: #333333;
 }

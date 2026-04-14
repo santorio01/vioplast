@@ -9,6 +9,7 @@ import Home from './pages/Home';
 import ProductDetail from './pages/ProductDetail';
 import AdminDashboard from './pages/AdminDashboard';
 import Login from './pages/Login';
+import AboutUs from './pages/AboutUs';
 
 function AppContent() {
   const location = useLocation();
@@ -21,6 +22,7 @@ function AppContent() {
       <main className="flex-grow w-full relative">
         <Routes>
           <Route path="/" element={<Home />} />
+          <Route path="/sobre-nosotros" element={<AboutUs />} />
           <Route path="/product/:id" element={<ProductDetail />} />
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/login" element={<Login />} />
