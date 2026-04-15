@@ -23,3 +23,14 @@ UPDATE "Produccion".settings
 SET about_company = '{"text": "Bajo la visión de ofrecer empaques y dotaciones plásticas de la más alta calidad, nacimos para suplir de manera eficiente a hogares, negocios e industrias.", "address": "Sede Principal, Bogotá", "imageUrl": "", "mapEmbed": "", "gallery": []}'
 WHERE about_company = '{}' OR about_company IS NULL;
 ```
+
+---
+
+## [2026-04-14] - Característica del Producto (Subtítulo)
+**Motivo:** Permitir mostrar información adicional (pulgadas, cantidades, etc.) debajo del título principal.
+
+```sql
+-- 1. Añadir columna subtitle a la tabla products
+ALTER TABLE "Produccion".products 
+ADD COLUMN IF NOT EXISTS subtitle TEXT;
+```

@@ -151,7 +151,10 @@ export default function Home() {
 
                 <div className="p-5 flex flex-col flex-grow">
                   <Link to={`/product/${product.id}`}>
-                    <h3 className="font-semibold text-gray-800 text-lg mb-1 line-clamp-2 hover:text-[#4608C2] transition">{product.name}</h3>
+                    <h3 className="font-semibold text-gray-800 text-lg mb-0.5 line-clamp-2 hover:text-[#4608C2] transition">{product.name}</h3>
+                    {product.subtitle && (
+                      <p className="text-gray-500 text-sm mb-1 line-clamp-1">{product.subtitle}</p>
+                    )}
                   </Link>
                   <div className="mt-auto pt-4 flex justify-between items-center">
                     <span className="text-[#4608C2] font-bold text-xl">${Number(product.price).toLocaleString()}</span>

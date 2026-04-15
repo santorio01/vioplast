@@ -26,7 +26,7 @@ export default function AdminDashboard() {
   const [savingSettings, setSavingSettings] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [formData, setFormData] = useState({
-    name: '', description: '', uses: '', price: '', stock: '', images: ['', '', '']
+    name: '', subtitle: '', description: '', uses: '', price: '', stock: '', images: ['', '', '']
   });
 
   useEffect(() => {
@@ -68,6 +68,7 @@ export default function AdminDashboard() {
         try {
           const formattedData = results.data.map(row => ({
             name: row.name || 'Sin nombre',
+            subtitle: row.subtitle || '',
             description: row.description || '',
             uses: row.uses || '',
             price: parseFloat(row.price) || 0,
@@ -107,6 +108,7 @@ export default function AdminDashboard() {
     try {
       const payload = {
         name: formData.name,
+        subtitle: formData.subtitle,
         description: formData.description,
         uses: formData.uses,
         price: parseFloat(formData.price),
@@ -134,6 +136,7 @@ export default function AdminDashboard() {
     setEditingId(product.id);
     setFormData({
       name: product.name,
+      subtitle: product.subtitle || '',
       description: product.description || '',
       uses: product.uses || '',
       price: product.price,
@@ -149,11 +152,14 @@ export default function AdminDashboard() {
 
   const openCreateModal = () => {
     setEditingId(null);
-    setFormData({ name: '', description: '', uses: '', price: '', stock: '', images: ['', '', ''] });
+    setFormData({ name: '', subtitle: '', description: '', uses: '', price: '', stock: '', images: ['', '', ''] });
     setShowModal(true);
   };
 
-  const filteredProducts = products.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()));
+  const filteredProducts = products.filter(p => 
+    p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    (p.subtitle && p.subtitle.toLowerCase().includes(searchTerm.toLowerCase()))
+  );
   
   const showNotification = (message, type = 'success') => {
     setNotification({ message, type });
@@ -341,10 +347,15 @@ export default function AdminDashboard() {
                 filteredProducts.map(product => (
                   <tr key={product.id} className="border-b hover:bg-gray-50">
                     <td className="p-4 flex items-center gap-3">
-                      <div className="w-10 h-10 rounded bg-gray-200 overflow-hidden">
+                      <div className="w-10 h-10 rounded bg-gray-200 overflow-hidden shrink-0">
                         <img src={product.images?.[0] || 'https://placehold.co/100x100?text=NA'} className="w-full h-full object-cover" alt="" />
                       </div>
-                      <span className="font-medium text-gray-800">{product.name}</span>
+                      <div className="flex flex-col">
+                        <span className="font-medium text-gray-800 leading-tight">{product.name}</span>
+                        {product.subtitle && (
+                          <span className="text-xs text-gray-500 mt-0.5">{product.subtitle}</span>
+                        )}
+                      </div>
                     </td>
                     <td className="p-4 text-gray-600">${product.price.toLocaleString()}</td>
                     <td className="p-4">
@@ -383,6 +394,13 @@ export default function AdminDashboard() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">Nombre</label>
                   <input required type="text" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full border rounded-lg p-2 focus:ring-2 focus:ring-[#4608C2] outline-none" />
                 </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Característica (Pulgadas, Cantidad, etc.)</label>
+                  <input type="text" value={formData.subtitle} onChange={e => setFormData({...formData, subtitle: e.target.value})} placeholder="Ej: 2 x 4 x 1.5 500 Unidades" className="w-full border rounded-lg p-2 focus:ring-2 focus:ring-[#4608C2] outline-none" />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="grid grid-cols-2 gap-2">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Precio</label>

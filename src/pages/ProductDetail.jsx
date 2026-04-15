@@ -97,7 +97,10 @@ export default function ProductDetail() {
                   <XCircle className="w-4 h-4" /> Agotado
                 </span>
               )}
-              <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">{product.name}</h1>
+              <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-1">{product.name}</h1>
+              {product.subtitle && (
+                <p className="text-lg text-gray-500 mb-4 font-medium">{product.subtitle}</p>
+              )}
               <p className="text-3xl font-extrabold text-[#4608C2] mb-6">${Number(product.price).toLocaleString()}</p>
             </div>
 
