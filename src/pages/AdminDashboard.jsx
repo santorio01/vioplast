@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import Papa from 'papaparse';
@@ -6,6 +6,7 @@ import { Package, Upload, Plus, Edit, Trash2, Search, X, Home, LogOut } from 'lu
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
+  const downloadRef = useRef(null);
   const [activeTab, setActiveTab] = useState('inventory'); // inventory, settings
   const [configTab, setConfigTab] = useState('sales'); // sales, contact, company
   const [products, setProducts] = useState([]);
@@ -21,12 +22,13 @@ export default function AdminDashboard() {
     store_whatsapp: '', 
     payment_methods: [], 
     contact_methods: [],
-    about_company: { text: '', address: '', imageUrl: '', mapEmbed: '', gallery: [] } 
+    about_company: { text: '', address: '', imageUrl: '', mapEmbed: '', gallery: [] },
+    product_categories: ['Polipropileno', 'Polietileno']
   });
   const [savingSettings, setSavingSettings] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [formData, setFormData] = useState({
-    name: '', subtitle: '', description: '', uses: '', price: '', stock: '', images: ['', '', '']
+    name: '', subtitle: '', description: '', uses: '', price: '', stock: '', images: ['', '', ''], category: ''
   });
 
   useEffect(() => {
@@ -66,15 +68,35 @@ export default function AdminDashboard() {
       complete: async (results) => {
         setIsUploading(true);
         try {
-          const formattedData = results.data.map(row => ({
-            name: row.name || 'Sin nombre',
-            subtitle: row.subtitle || '',
-            description: row.description || '',
-            uses: row.uses || '',
-            price: parseFloat(row.price) || 0,
-            stock: parseInt(row.stock, 10) || 0,
-            images: [row.image1 || '', row.image2 || '', row.image3 || '']
-          }));
+          const newCategories = new Set();
+          const existingCategories = settings.product_categories || ['Polipropileno', 'Polietileno'];
+
+          const formattedData = results.data.map(row => {
+            const rowCat = row.categoria || 'Sin Categoría';
+            if (rowCat !== 'Sin Categoría' && !existingCategories.includes(rowCat)) {
+              newCategories.add(rowCat);
+            }
+
+            return {
+              name: row.nombre || 'Sin nombre',
+              subtitle: row.característica || '',
+              description: row.descripcion || '',
+              uses: row.usos || '',
+              price: parseFloat(row.precio) || 0,
+              stock: parseInt(row.existencias, 10) || 0,
+              images: [], // Imágenes removidas por solicitud del usuario
+              category: rowCat
+            };
+          });
+
+          // Si hay categorías nuevas, agregarlas a los ajustes automáticamente
+          if (newCategories.size > 0) {
+            const updatedCategories = Array.from(new Set([...existingCategories, ...Array.from(newCategories)]));
+            await supabase.from('settings').update({ 
+               product_categories: updatedCategories 
+            }).eq('id', settings.id);
+            fetchSettings(); // Refrescar UI
+          }
 
           const { error } = await supabase.from('products').insert(formattedData);
           if (error) throw error;
@@ -90,6 +112,16 @@ export default function AdminDashboard() {
         }
       }
     });
+  };
+
+  const downloadCSVTemplate = () => {
+    // Usamos un archivo estático real para garantizar que Chrome respete el nombre
+    const link = document.createElement('a');
+    link.href = '/PLANTILLA_PARA_SUBIR_PRODUCTOS.csv';
+    link.download = 'PLANTILLA_PARA_SUBIR_PRODUCTOS.csv';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const handleDelete = async (id) => {
@@ -113,7 +145,8 @@ export default function AdminDashboard() {
         uses: formData.uses,
         price: parseFloat(formData.price),
         stock: parseInt(formData.stock, 10),
-        images: formData.images.filter(img => img.trim() !== '')
+        images: formData.images.filter(img => img.trim() !== ''),
+        category: formData.category || 'Sin Categoría'
       };
 
       if (editingId) {
@@ -145,14 +178,15 @@ export default function AdminDashboard() {
         product.images?.[0] || '',
         product.images?.[1] || '',
         product.images?.[2] || ''
-      ]
+      ],
+      category: product.category || ''
     });
     setShowModal(true);
   };
 
   const openCreateModal = () => {
     setEditingId(null);
-    setFormData({ name: '', subtitle: '', description: '', uses: '', price: '', stock: '', images: ['', '', ''] });
+    setFormData({ name: '', subtitle: '', description: '', uses: '', price: '', stock: '', images: ['', '', ''], category: '' });
     setShowModal(true);
   };
 
@@ -230,6 +264,7 @@ export default function AdminDashboard() {
         store_whatsapp: settings.store_whatsapp, 
         payment_methods: settings.payment_methods,
         contact_methods: settings.contact_methods || [],
+        product_categories: settings.product_categories || [],
         about_company: {
           ...(settings.about_company || {}),
           mapEmbed: getMapUrl(settings.about_company?.mapEmbed)
@@ -262,6 +297,8 @@ export default function AdminDashboard() {
 
   return (
     <>
+    {/* Enlace oculto para descargas robustas en Chrome */}
+    <a ref={downloadRef} style={{ display: 'none' }} />
     <div className="max-w-7xl mx-auto px-4 py-8 w-full">
       {/* Cabecera Superior con Navegación */}
       <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4 border-b pb-4">
@@ -302,10 +339,19 @@ export default function AdminDashboard() {
       {activeTab === 'inventory' && (
       <div className="animate-fade-in">
         <div className="flex justify-end gap-2 mb-4">
+          <button 
+            onClick={downloadCSVTemplate}
+            className="flex items-center gap-2 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-lg font-medium transition shadow-sm"
+            title="Descargar formato vacío con instrucciones"
+          >
+            <Upload className="w-4 h-4 rotate-180 text-blue-600" />
+            Plantilla para Subir Productos
+          </button>
+
           {/* Carga Masiva (CSV) */}
           <label className={`cursor-pointer flex items-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg font-medium transition ${isUploading ? 'opacity-50 pointer-events-none' : ''}`}>
             <Upload className="w-4 h-4" />
-            {isUploading ? 'Cargando...' : 'Carga Masiva (CSV)'}
+            {isUploading ? 'Cargando...' : 'Subir CSV'}
             <input type="file" accept=".csv" className="hidden" onChange={handleFileUpload} />
           </label>
           
@@ -335,6 +381,7 @@ export default function AdminDashboard() {
                 <th className="p-4 font-medium">Producto</th>
                 <th className="p-4 font-medium">Precio</th>
                 <th className="p-4 font-medium">Stock</th>
+                <th className="p-4 font-medium">Categoría</th>
                 <th className="p-4 font-medium text-right">Acciones</th>
               </tr>
             </thead>
@@ -361,6 +408,11 @@ export default function AdminDashboard() {
                     <td className="p-4">
                       <span className={`px-2 py-1 rounded-full text-xs font-bold ${product.stock > 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
                         {product.stock}
+                      </span>
+                    </td>
+                    <td className="p-4">
+                      <span className="text-xs bg-purple-100 text-[#4608C2] px-2 py-1 rounded font-bold uppercase transition-all whitespace-nowrap">
+                        {product.category || 'General'}
                       </span>
                     </td>
                     <td className="p-4 text-right">
@@ -410,6 +462,19 @@ export default function AdminDashboard() {
                     <label className="block text-sm font-medium text-gray-700 mb-1">Stock</label>
                     <input required type="number" value={formData.stock} onChange={e => setFormData({...formData, stock: e.target.value})} className="w-full border rounded-lg p-2 focus:ring-2 focus:ring-[#4608C2] outline-none" />
                   </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Categoría</label>
+                  <select 
+                    value={formData.category} 
+                    onChange={e => setFormData({...formData, category: e.target.value})}
+                    className="w-full border rounded-lg p-2 focus:ring-2 focus:ring-[#4608C2] outline-none bg-white"
+                  >
+                    <option value="">Selecciona Categoría...</option>
+                    {(settings.product_categories || ['Polipropileno', 'Polietileno']).map(cat => (
+                      <option key={cat} value={cat}>{cat}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
@@ -480,6 +545,12 @@ export default function AdminDashboard() {
               className={`flex-1 py-2 rounded-lg text-sm font-bold transition ${configTab === 'company' ? 'bg-white text-[#4608C2] shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
             >
               Institucional
+            </button>
+            <button 
+              onClick={() => setConfigTab('categories')}
+              className={`flex-1 py-2 rounded-lg text-sm font-bold transition ${configTab === 'categories' ? 'bg-white text-[#4608C2] shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+            >
+              Categorías
             </button>
           </div>
 
@@ -704,6 +775,68 @@ export default function AdminDashboard() {
                         ))}
                       </div>
                     </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {configTab === 'categories' && (
+              <div className="animate-fade-in space-y-8">
+                <div>
+                  <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">📂 Categorías de Productos</h3>
+                  <div className="bg-[#4608C2]/5 p-6 rounded-2xl border border-[#4608C2]/10 mb-6 font-bold text-slate-800">
+                    <label className="block text-sm font-bold text-gray-700 mb-2">Añadir Nueva Categoría</label>
+                    <div className="flex gap-2">
+                       <input 
+                        id="new-category-input"
+                        type="text" 
+                        placeholder="Ej: Polipropileno"
+                        className="flex-grow border rounded-xl p-3 outline-none focus:ring-2 focus:ring-[#4608C2] bg-white font-medium"
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            const val = e.currentTarget.value.trim();
+                            if (val) {
+                              setSettings({...settings, product_categories: [...(settings.product_categories || ['Polipropileno', 'Polietileno']), val]});
+                              e.currentTarget.value = '';
+                            }
+                          }
+                        }}
+                       />
+                       <button 
+                         type="button"
+                         onClick={() => {
+                           const input = document.getElementById('new-category-input');
+                           const val = input.value.trim();
+                           if (val) {
+                             setSettings({...settings, product_categories: [...(settings.product_categories || ['Polipropileno', 'Polietileno']), val]});
+                             input.value = '';
+                           }
+                         }}
+                         className="bg-[#4608C2] text-white px-6 py-3 rounded-xl font-bold hover:brightness-110 transition"
+                       >
+                         Añadir
+                       </button>
+                    </div>
+                    <p className="text-xs text-gray-400 mt-2 font-medium italic">Escribe el nombre y presiona Enter para crear. Luego haz clic en "Guardar Todo" al final.</p>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                    {(settings.product_categories || ['Polipropileno', 'Polietileno']).map((cat, idx) => (
+                      <div key={idx} className="flex justify-between items-center p-4 bg-white rounded-xl border border-gray-100 shadow-sm group hover:border-[#4608C2]/30 transition-all">
+                        <span className="font-bold text-gray-700">{cat}</span>
+                        <button 
+                          type="button" 
+                          onClick={() => {
+                            const newList = (settings.product_categories || []).filter(c => c !== cat);
+                            setSettings({...settings, product_categories: newList});
+                          }}
+                          className="text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition"
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                      </div>
+                    ))}
                   </div>
                 </div>
               </div>

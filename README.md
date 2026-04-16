@@ -1,16 +1,31 @@
-# React + Vite
+# Vioplast - Soluciones en Empaque y Dotaciones Plásticas
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Plataforma de E-commerce moderna y profesional diseñada para **Vioplast**. Permite la visualización de un catálogo dinámico y la gestión administrativa total de productos y configuración institucional.
 
-Currently, two official plugins are available:
+## 🚀 Tecnologías Principales
+- **Core**: React 19 + Vite + JavaScript (ES6+).
+- **Styling**: Tailwind CSS 4.0 (Diseño Premium & Responsive).
+- **Animaciones**: Framer Motion para una experiencia de usuario fluida.
+- **Backend**: Supabase (Postgres, Auth y Storage).
+- **Checkout**: Integración directa con WhatsApp para cierre de ventas instantáneo.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## 📂 Estructura del Proyecto
+- `src/`: Código fuente de la aplicación React.
+- `Documentacion/`: Guías técnicas, manuales de usuario y esquemas de base de datos.
+- `public/`: Recursos estáticos e imágenes base del catálogo.
 
-## React Compiler
+## 📘 Documentación
+Para profundizar en el funcionamiento del sistema, consulta los siguientes manuales:
+- [Manual Técnico](Documentacion/Manual_Tecnico.md): Arquitectura, componentes y configuración.
+- [Manual de Usuario](Documentacion/Manual_Usuario.md): Guía de administración, carga de productos y configuración.
+- [Esquema DB](Documentacion/schema.sql): Estructura de tablas y políticas RLS.
+- [Control de Cambios SQL](Documentacion/CONTROL_QUERYS.md): Bitácora de migraciones aplicadas.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## 🛠️ Instalación y Desarrollo
+1. Clonar el repositorio.
+2. Ejecutar `npm install` para instalar dependencias.
+3. Configurar las variables de entorno en un archivo `.env` (Basado en `.env.example`).
+4. Ejecutar `npm run dev` para iniciar el servidor de desarrollo.
 
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+---
+*Desarrollado con ❤️ para potenciar el comercio electrónico de Vioplast.*

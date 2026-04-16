@@ -2,10 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useCart } from '../lib/CartContext';
-import { ShoppingBag, CheckCircle, CreditCard, Banknote, Truck, Clock, Plus } from 'lucide-react';
+import { ShoppingBag, CheckCircle, CreditCard, Banknote, Truck, Clock, Plus, Search } from 'lucide-react';
 
 export default function Home() {
   const [products, setProducts] = useState([]);
+  const [categories, setCategories] = useState(['Polipropileno', 'Polietileno']);
+  const [selectedCategory, setSelectedCategory] = useState('Todos');
+  const [searchTerm, setSearchTerm] = useState('');
   const [pastOrders, setPastOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const { addToCart } = useCart();
@@ -28,6 +31,17 @@ export default function Home() {
       if (prodErr) throw prodErr;
       setProducts(prodData || []);
 
+      // 2. Cargar Categorías desde settings
+      const { data: settingsData } = await supabase
+        .from('settings')
+        .select('product_categories')
+        .limit(1)
+        .single();
+      
+      if (settingsData?.product_categories) {
+        setCategories(settingsData.product_categories);
+      }
+
       // 2. Si hay cliente, cargar historial de pedidos
       if (client?.id) {
         const { data: orderData } = await supabase
@@ -46,6 +60,13 @@ export default function Home() {
       setLoading(false);
     }
   };
+
+  const filteredProducts = products.filter(p => {
+    const matchesCategory = selectedCategory === 'Todos' || p.category === selectedCategory;
+    const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                          (p.subtitle && p.subtitle.toLowerCase().includes(searchTerm.toLowerCase()));
+    return matchesCategory && matchesSearch;
+  });
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -112,24 +133,87 @@ export default function Home() {
 
       {/* Catalog Section */}
       <section className="flex-grow max-w-7xl mx-auto px-4 py-12 w-full">
-        <div className="flex justify-between items-end mb-8">
-          <h2 className="text-3xl font-bold text-gray-800">Nuestro Catálogo</h2>
-          <span className="text-gray-500">{products.length} Productos</span>
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 gap-4">
+          <div>
+            <h2 className="text-3xl font-bold text-gray-800">Nuestro Catálogo</h2>
+            <p className="text-gray-500 mt-1">Explora nuestra variedad de productos por material.</p>
+          </div>
+          <span className="bg-gray-100 text-gray-600 px-4 py-1 rounded-full text-sm font-medium">
+            {filteredProducts.length} {filteredProducts.length === 1 ? 'Producto' : 'Productos'}
+          </span>
+        </div>
+
+        {/* Category Filter & Search Bar */}
+        <div className="flex flex-col lg:flex-row gap-6 mb-8">
+          {/* Categories */}
+          <div className="flex flex-grow overflow-x-auto pb-2 gap-3 no-scrollbar scroll-smooth items-center">
+            <button
+              onClick={() => setSelectedCategory('Todos')}
+              className={`px-6 py-2 rounded-full font-bold transition-all border shrink-0 ${
+                selectedCategory === 'Todos' 
+                  ? 'bg-[#4608C2] text-white border-[#4608C2] shadow-lg shadow-purple-200 scale-105' 
+                  : 'bg-white text-gray-600 border-gray-200 hover:border-[#4608C2] hover:text-[#4608C2]'
+              }`}
+            >
+              Todos
+            </button>
+            {categories.map(cat => (
+              <button
+                key={cat}
+                onClick={() => setSelectedCategory(cat)}
+                className={`px-6 py-2 rounded-full font-bold transition-all border shrink-0 ${
+                  selectedCategory === cat 
+                    ? 'bg-[#4608C2] text-white border-[#4608C2] shadow-lg shadow-purple-200 scale-105' 
+                    : 'bg-white text-gray-600 border-gray-200 hover:border-[#4608C2] hover:text-[#4608C2]'
+                }`}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
+
+          {/* Search Box */}
+          <div className="relative w-full lg:w-96 shrink-0">
+            <Search className="w-5 h-5 absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
+            <input 
+              type="text" 
+              placeholder="Buscar por nombre o material..." 
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-11 pr-4 py-3 rounded-full border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#4608C2] shadow-sm bg-white"
+            />
+            {searchTerm && (
+              <button 
+                onClick={() => setSearchTerm('')}
+                className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              >
+                <div className="bg-gray-100 rounded-full p-1"><Plus className="w-4 h-4 rotate-45" /></div>
+              </button>
+            )}
+          </div>
         </div>
 
         {loading ? (
           <div className="flex justify-center items-center h-64">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#4608C2]"></div>
           </div>
-        ) : products.length === 0 ? (
+        ) : filteredProducts.length === 0 ? (
           <div className="text-center py-20 bg-gray-50 rounded-xl border border-dashed border-gray-300">
             <ShoppingBag className="mx-auto h-16 w-16 text-gray-400 mb-4" />
-            <h3 className="text-xl font-semibold text-gray-700">No hay productos disponibles</h3>
-            <p className="text-gray-500 mt-2">Pronto agregaremos nuevo inventario.</p>
+            <h3 className="text-xl font-semibold text-gray-700">No hay productos en "{selectedCategory}"</h3>
+            <p className="text-gray-500 mt-2">Prueba seleccionando otra categoría o ver todo el catálogo.</p>
+            {selectedCategory !== 'Todos' && (
+              <button 
+                onClick={() => setSelectedCategory('Todos')}
+                className="mt-4 text-[#4608C2] font-bold hover:underline"
+              >
+                Volver a ver todos
+              </button>
+            )}
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {products.map(product => (
+            {filteredProducts.map(product => (
               <div key={product.id} className="group flex flex-col bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-100 relative">
                 
                 <Link to={`/product/${product.id}`} className="block aspect-square bg-gray-100 relative overflow-hidden">
