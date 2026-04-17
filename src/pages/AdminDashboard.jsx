@@ -64,54 +64,88 @@ export default function AdminDashboard() {
 
     Papa.parse(file, {
       header: true,
-      skipEmptyLines: true,
+      skipEmptyLines: 'greedy', // Ignorar líneas con solo espacios
+      delimitersToGuess: [',', ';', '\t', '|'], // Forzar detección de excel
       complete: async (results) => {
         setIsUploading(true);
         try {
+          // Log para depuración interna (Visto por el desarrollador)
+          console.log("Muestra de datos parseados:", results.data[0]);
+          console.log("Delimitador detectado:", results.meta.delimiter);
+
           const newCategories = new Set();
           const existingCategories = settings.product_categories || ['Polipropileno', 'Polietileno'];
 
           // Función para limpiar y normalizar los nombres de las columnas
           const normalizeKey = (key) => {
+            if (!key) return '';
             return key.toLowerCase()
               .trim()
               .normalize("NFD")
               .replace(/[\u0300-\u036f]/g, ""); // Quitar acentos
           };
 
+          // Función Robusta para parsear números de Excel (Evita el error de los puntos de miles)
+          const parseSafeNumber = (val) => {
+            if (val === null || val === undefined || val === '') return 0;
+            const strVal = String(val).trim();
+            // Eliminar todo lo que no sea número, coma o punto
+            let clean = strVal.replace(/[^\d.,-]/g, '');
+            
+            // Si tiene más de un separador, asumimos que el punto/coma es de miles
+            // Ej: 10.000 -> 10000
+            if ((clean.match(/\./g) || []).length > 0 && clean.indexOf('.') < clean.length - 3) {
+              clean = clean.replace(/\./g, '');
+            }
+            if ((clean.match(/,/g) || []).length > 0 && clean.indexOf(',') < clean.length - 3) {
+              clean = clean.replace(/,/g, '');
+            }
+            
+            // Reemplazo final para parseFloat técnico
+            const final = clean.replace(',', '.');
+            const num = parseFloat(final);
+            return isNaN(num) ? 0 : num;
+          };
+
           // Mapa de sinónimos para mayor flexibilidad
           const findValue = (row, synonyms) => {
             const foundKey = Object.keys(row).find(k => synonyms.includes(normalizeKey(k)));
-            return foundKey ? row[foundKey] : null;
+            return foundKey ? String(row[foundKey]).trim() : null;
           };
 
           const synonyms = {
-            name: ['nombre', 'producto', 'name', 'articulo', 'item'],
+            name: ['nombre', 'producto', 'name', 'articulo', 'item', 'descripcion'],
             subtitle: ['caracteristica', 'subtitulo', 'medida', 'referencia', 'subtitle'],
             description: ['descripcion', 'detalles', 'description'],
             uses: ['usos', 'aplicaciones', 'uses'],
             price: ['precio', 'valor', 'costo', 'price', 'venta'],
-            stock: ['existencias', 'stock', 'cantidad', 'inventario'],
+            stock: ['existencias', 'stock', 'cantidad', 'inventario', 'qty'],
             category: ['categoria', 'linea', 'grupo', 'category']
           };
 
-          const formattedData = results.data.map(row => {
-            const rowCat = findValue(row, synonyms.category) || 'Sin Categoría';
-            if (rowCat !== 'Sin Categoría' && !existingCategories.includes(rowCat)) {
-              newCategories.add(rowCat);
-            }
+          const formattedData = results.data
+            .filter(row => findValue(row, synonyms.name)) // Ignorar filas sin nombre
+            .map(row => {
+              const rowCat = findValue(row, synonyms.category) || 'Sin Categoría';
+              if (rowCat !== 'Sin Categoría' && !existingCategories.includes(rowCat)) {
+                newCategories.add(rowCat);
+              }
 
-            return {
-              name: findValue(row, synonyms.name) || 'Sin nombre',
-              subtitle: findValue(row, synonyms.subtitle) || '',
-              description: findValue(row, synonyms.description) || '',
-              uses: findValue(row, synonyms.uses) || '',
-              price: parseFloat(findValue(row, synonyms.price)) || 0,
-              stock: parseInt(findValue(row, synonyms.stock), 10) || 0,
-              images: [], // Imágenes removidas por solicitud del usuario
-              category: rowCat
-            };
-          });
+              return {
+                name: findValue(row, synonyms.name) || 'Sin nombre',
+                subtitle: findValue(row, synonyms.subtitle) || '',
+                description: findValue(row, synonyms.description) || '',
+                uses: findValue(row, synonyms.uses) || '',
+                price: parseSafeNumber(findValue(row, synonyms.price)),
+                stock: parseInt(parseSafeNumber(findValue(row, synonyms.stock)), 10),
+                images: [], 
+                category: rowCat
+              };
+            });
+
+          if (formattedData.length === 0) {
+            throw new Error('No se encontraron datos válidos en el archivo. Verifica los encabezados.');
+          }
 
           // Si hay categorías nuevas, agregarlas a los ajustes automáticamente
           if (newCategories.size > 0) {
