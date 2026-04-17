@@ -32,6 +32,10 @@
 - **Búsqueda por Texto:** Se añadió una barra de búsqueda en el Home que permite filtrar productos por nombre o subtítulo en tiempo real.
 - **Corrección de Persistencia:** Se solucionó el bug de guardado de categorías en la tabla `settings` del esquema `"Produccion"`.
 
+### 🧠 Conocimientos y Lógicas Nuevas
+*   **Mapeo Flexible de CSV**: Se implementó una lógica de "Sinónimos" en la importación masiva. El sistema ahora normaliza los encabezados (quita acentos, espacios y pasa a minúsculas) y busca concordancias inteligentes. Ejemplo: reconoce que "Nombre", "Producto" y "Article" se refieren al mismo campo.
+*   **Normalización UTF-8**: Se añadió limpieza de caracteres especiales (NFD) para evitar que los acentos en columnas como "característica" rompan la lectura de datos desde Excel.
+
 ### 2. Conocimientos y Lógicas Aplicadas
 - **Schema Management (Produccion):** Reforzamiento de la importancia del esquema `"Produccion"` en las peticiones de Supabase para separar entornos.
 - **Filtrado Local vs Server:** Se optó por un filtrado local de la lista de productos descargados por simplicidad y velocidad en la respuesta del UI (Snappy UX).

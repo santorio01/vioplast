@@ -71,19 +71,43 @@ export default function AdminDashboard() {
           const newCategories = new Set();
           const existingCategories = settings.product_categories || ['Polipropileno', 'Polietileno'];
 
+          // Función para limpiar y normalizar los nombres de las columnas
+          const normalizeKey = (key) => {
+            return key.toLowerCase()
+              .trim()
+              .normalize("NFD")
+              .replace(/[\u0300-\u036f]/g, ""); // Quitar acentos
+          };
+
+          // Mapa de sinónimos para mayor flexibilidad
+          const findValue = (row, synonyms) => {
+            const foundKey = Object.keys(row).find(k => synonyms.includes(normalizeKey(k)));
+            return foundKey ? row[foundKey] : null;
+          };
+
+          const synonyms = {
+            name: ['nombre', 'producto', 'name', 'articulo', 'item'],
+            subtitle: ['caracteristica', 'subtitulo', 'medida', 'referencia', 'subtitle'],
+            description: ['descripcion', 'detalles', 'description'],
+            uses: ['usos', 'aplicaciones', 'uses'],
+            price: ['precio', 'valor', 'costo', 'price', 'venta'],
+            stock: ['existencias', 'stock', 'cantidad', 'inventario'],
+            category: ['categoria', 'linea', 'grupo', 'category']
+          };
+
           const formattedData = results.data.map(row => {
-            const rowCat = row.categoria || 'Sin Categoría';
+            const rowCat = findValue(row, synonyms.category) || 'Sin Categoría';
             if (rowCat !== 'Sin Categoría' && !existingCategories.includes(rowCat)) {
               newCategories.add(rowCat);
             }
 
             return {
-              name: row.nombre || 'Sin nombre',
-              subtitle: row.característica || '',
-              description: row.descripcion || '',
-              uses: row.usos || '',
-              price: parseFloat(row.precio) || 0,
-              stock: parseInt(row.existencias, 10) || 0,
+              name: findValue(row, synonyms.name) || 'Sin nombre',
+              subtitle: findValue(row, synonyms.subtitle) || '',
+              description: findValue(row, synonyms.description) || '',
+              uses: findValue(row, synonyms.uses) || '',
+              price: parseFloat(findValue(row, synonyms.price)) || 0,
+              stock: parseInt(findValue(row, synonyms.stock), 10) || 0,
               images: [], // Imágenes removidas por solicitud del usuario
               category: rowCat
             };
