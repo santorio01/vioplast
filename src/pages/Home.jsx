@@ -26,6 +26,10 @@ export default function Home() {
   const [showLeftArrow, setShowLeftArrow] = useState(false);
   const [showRightArrow, setShowRightArrow] = useState(true);
 
+  // Restaurar contexto de cliente
+  const clientData = localStorage.getItem('vioplast_client');
+  const client = clientData ? JSON.parse(clientData) : null;
+
   const checkScroll = () => {
     if (scrollRef.current) {
       const { scrollLeft, scrollWidth, clientWidth } = scrollRef.current;
@@ -41,7 +45,6 @@ export default function Home() {
       scrollRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
     }
   };
-  const client = clientData ? JSON.parse(clientData) : null;
 
   useEffect(() => {
     fetchData();
