@@ -35,7 +35,7 @@
 *   **Mapeo Flexible de CSV**: Se implementó una lógica de "Sinónimos" en la importación masiva. El sistema ahora normaliza los encabezados (quita acentos, espacios y pasa a minúsculas) y busca concordancias inteligentes. Ejemplo: reconoce que "Nombre", "Producto" y "Article" se refieren al mismo campo.
 *   **Normalización UTF-8**: Se añadió limpieza de caracteres especiales (NFD) para evitar que los acentos en columnas como "característica" rompan la lectura de datos desde Excel.
 *   **Parseador Numérico Robusto**: Se implementó `parseSafeNumber` para limpiar automáticamente precios con puntos de miles (`10.000`), comas decimales o símbolos de moneda (`$`). Esto garantiza que los valores lleguen como números reales a la base de datos y no como ceros.
-*   **Detección de Excel Forzada**: Se configuró `delimitersToGuess` para detectar automáticamente el punto y coma (`;`) típico de Excel en español.
+*   **Detección de Excel Forzada (Lógica de Rescate)**: Se implementó un "Plan B" que detecta si el navegador leyó mal el archivo (viendo una sola columna). En ese caso, el sistema divide manualmente por punto y coma (`;`), limpia el carácter BOM de Excel (`\uFEFF`) y elimina las comillas dobles innecesarias de las celdas. Esto permite subir archivos complejos como `productoscliente.csv` sin errores.
 *   **Carrusel de Categorías Pro**: Se refactorizó la navegación del Home para incluir un carrusel con flechas de navegación (desktop) y efectos de desvanecimiento lateral (fade). Se implementó comportamiento `Sticky` para que las categorías acompañen al usuario durante el scroll.
 
 ### 2. Conocimientos y Lógicas Aplicadas

@@ -64,36 +64,50 @@ export default function AdminDashboard() {
 
     Papa.parse(file, {
       header: true,
-      skipEmptyLines: 'greedy', // Ignorar líneas con solo espacios
-      delimitersToGuess: [',', ';', '\t', '|'], // Forzar detección de excel
+      skipEmptyLines: 'greedy', 
+      delimitersToGuess: [',', ';', '\t', '|'],
       complete: async (results) => {
         setIsUploading(true);
         try {
-          // Log para depuración interna (Visto por el desarrollador)
-          console.log("Muestra de datos parseados:", results.data[0]);
-          console.log("Delimitador detectado:", results.meta.delimiter);
+          let rows = results.data;
+          
+          // --- LÓGICA DE RESCATE (PLAN B) ---
+          // Si PapaParse detectó solo 1 columna pero contiene ';' es que falló el delimitador
+          if (rows.length > 0 && Object.keys(rows[0]).length === 1) {
+            const firstKey = Object.keys(rows[0])[0];
+            if (firstKey.includes(';')) {
+              console.warn("Auto-reparando archivo: Delimitador punto y coma detectado.");
+              const rawHeaders = firstKey.split(';');
+              rows = rows.map(row => {
+                const rawValues = Object.values(row)[0].split(';');
+                const newRow = {};
+                rawHeaders.forEach((h, i) => {
+                  newRow[h] = rawValues[i] || '';
+                });
+                return newRow;
+              });
+            }
+          }
 
           const newCategories = new Set();
           const existingCategories = settings.product_categories || ['Polipropileno', 'Polietileno'];
 
-          // Función para limpiar y normalizar los nombres de las columnas
+          // Función para limpiar y normalizar los nombres de las columnas (Resiliente a BOM)
           const normalizeKey = (key) => {
             if (!key) return '';
-            return key.toLowerCase()
+            return String(key).toLowerCase()
               .trim()
+              .replace(/^\uFEFF/, '') // Eliminar BOM de Excel
               .normalize("NFD")
               .replace(/[\u0300-\u036f]/g, ""); // Quitar acentos
           };
 
-          // Función Robusta para parsear números de Excel (Evita el error de los puntos de miles)
           const parseSafeNumber = (val) => {
-            if (val === null || val === undefined || val === '') return 0;
-            const strVal = String(val).trim();
-            // Eliminar todo lo que no sea número, coma o punto
-            let clean = strVal.replace(/[^\d.,-]/g, '');
+            if (!val) return 0;
+            // Quitar comillas, símbolos de moneda y espacios
+            let clean = String(val).replace(/["'$]/g, '').trim();
+            clean = clean.replace(/[^\d.,-]/g, '');
             
-            // Si tiene más de un separador, asumimos que el punto/coma es de miles
-            // Ej: 10.000 -> 10000
             if ((clean.match(/\./g) || []).length > 0 && clean.indexOf('.') < clean.length - 3) {
               clean = clean.replace(/\./g, '');
             }
@@ -101,16 +115,16 @@ export default function AdminDashboard() {
               clean = clean.replace(/,/g, '');
             }
             
-            // Reemplazo final para parseFloat técnico
             const final = clean.replace(',', '.');
             const num = parseFloat(final);
             return isNaN(num) ? 0 : num;
           };
 
-          // Mapa de sinónimos para mayor flexibilidad
           const findValue = (row, synonyms) => {
             const foundKey = Object.keys(row).find(k => synonyms.includes(normalizeKey(k)));
-            return foundKey ? String(row[foundKey]).trim() : null;
+            if (!foundKey) return null;
+            // Limpiar comillas de Excel en los valores
+            return String(row[foundKey]).trim().replace(/^"|"$/g, '');
           };
 
           const synonyms = {
@@ -123,8 +137,8 @@ export default function AdminDashboard() {
             category: ['categoria', 'linea', 'grupo', 'category']
           };
 
-          const formattedData = results.data
-            .filter(row => findValue(row, synonyms.name)) // Ignorar filas sin nombre
+          const formattedData = rows
+            .filter(row => findValue(row, synonyms.name))
             .map(row => {
               const rowCat = findValue(row, synonyms.category) || 'Sin Categoría';
               if (rowCat !== 'Sin Categoría' && !existingCategories.includes(rowCat)) {
@@ -144,7 +158,7 @@ export default function AdminDashboard() {
             });
 
           if (formattedData.length === 0) {
-            throw new Error('No se encontraron datos válidos en el archivo. Verifica los encabezados.');
+            throw new Error('No se encontraron datos válidos. Verifica que el archivo sea CSV delimitado por punto y coma.');
           }
 
           // Si hay categorías nuevas, agregarlas a los ajustes automáticamente
