@@ -62,126 +62,96 @@ export default function AdminDashboard() {
     const file = e.target.files[0];
     if (!file) return;
 
-    Papa.parse(file, {
-      header: true,
-      skipEmptyLines: 'greedy', 
-      delimitersToGuess: [',', ';', '\t', '|'],
-      complete: async (results) => {
-        setIsUploading(true);
-        try {
-          let rows = results.data;
-          
-          // --- LÓGICA DE RESCATE (PLAN B v4 - RECURSIVA DEFINITIVA) ---
-          // Marca de versión para verificar despliegue en Vercel
-          console.log("[Bioplast v3.1] Motor de Rescate Activo");
+    // --- MEJORA v5.1: Mapeo Fijo (Basado en voz del cliente) ---
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const text = event.target.result;
+      const firstLine = text.split('\n')[0];
+      const countSemicolon = (firstLine.match(/;/g) || []).length;
+      const countComma = (firstLine.match(/g/) || []).length; // El usuario usa Excel español
+      const delimiter = countSemicolon >= countComma ? ';' : ',';
 
-          const isSingleKeyFailure = (row) => {
-            if (!row) return false;
-            const keys = Object.keys(row).filter(k => k !== '__parsed_extra');
-            return keys.length === 1 && keys[0].includes(';');
-          };
+      console.log(`[Bioplast v5.1] Estándar Fijo Activo (Delimitador: "${delimiter}")`);
 
-          if (rows.length > 0 && isSingleKeyFailure(rows[0])) {
-            console.warn("Auto-reparando archivo: Detectados delimitadores complejos.");
-            
-            // Reparar encabezados con Papa para respetar posibles comillas
-            const firstHeaderKey = Object.keys(rows[0]).filter(k => k !== '__parsed_extra')[0];
-            const headerParse = Papa.parse(firstHeaderKey, { delimiter: ';' });
-            const rawHeaders = headerParse.data[0] || [];
-            
-            rows = rows.map(row => {
-              // Reconstruir la fila uniendo el valor principal con los datos desplazados
-              const firstValue = Object.values(row).filter((_, i) => Object.keys(row)[i] !== '__parsed_extra')[0];
-              let fullRowString = String(firstValue);
+      Papa.parse(text, {
+        header: true,
+        delimiter: delimiter,
+        skipEmptyLines: 'greedy', 
+        complete: async (results) => {
+          setIsUploading(true);
+          try {
+            const rows = results.data;
+
+            const newCategories = new Set();
+            const existingCategories = settings.product_categories || ['Polipropileno', 'Polietileno'];
+
+            // Normalización resiliente (Maneja BOM de Excel y acentos)
+            const normalizeKey = (key) => {
+              if (!key) return '';
+              return String(key).toLowerCase()
+                .trim()
+                .replace(/^\uFEFF/, '') 
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, ""); 
+            };
+
+            const parseSafeNumber = (val) => {
+              if (!val) return 0;
+              let clean = String(val).replace(/["'$]/g, '').trim();
+              clean = clean.replace(/[^\d.,-]/g, '');
               
-              if (row.__parsed_extra && Array.isArray(row.__parsed_extra)) {
-                fullRowString += ';' + row.__parsed_extra.join(';');
+              if ((clean.match(/\./g) || []).length > 0 && clean.indexOf('.') < clean.length - 3) {
+                clean = clean.replace(/\./g, '');
+              }
+              if ((clean.match(/,/g) || []).length > 0 && clean.indexOf(',') < clean.length - 3) {
+                clean = clean.replace(/,/g, '');
               }
               
-              // PARSE RECURSIVO: Usar PapaParse de nuevo para separar respetando comillas
-              const innerParse = Papa.parse(fullRowString, { delimiter: ';' });
-              const rawValues = innerParse.data[0] || [];
-              
-              const newRow = {};
-              rawHeaders.forEach((h, i) => {
-                newRow[h] = rawValues[i] || '';
+              const final = clean.replace(',', '.');
+              const num = parseFloat(final);
+              return isNaN(num) ? 0 : num;
+            };
+
+            const findValue = (row, synonyms) => {
+              const foundKey = Object.keys(row).find(k => synonyms.includes(normalizeKey(k)));
+              if (!foundKey) return null;
+              return String(row[foundKey]).trim().replace(/^"|"$/g, '');
+            };
+
+            // Sinónimos alineados 100% a la plantilla del cliente
+            const synonyms = {
+              name: ['nombre', 'producto', 'item'],
+              subtitle: ['caracteristica', 'subtitulo', 'referencia'],
+              description: ['descripcion', 'detalles'],
+              uses: ['usos', 'aplicaciones'],
+              price: ['precio', 'valor', 'venta'],
+              stock: ['existencias', 'stock', 'cantidad'],
+              category: ['categoria', 'linea', 'grupo']
+            };
+
+            const formattedData = rows
+              .filter(row => findValue(row, synonyms.name))
+              .map(row => {
+                const rowCat = findValue(row, synonyms.category) || 'Sin Categoría';
+                if (rowCat !== 'Sin Categoría' && !existingCategories.includes(rowCat)) {
+                  newCategories.add(rowCat);
+                }
+
+                return {
+                  name: findValue(row, synonyms.name) || 'Sin nombre',
+                  subtitle: findValue(row, synonyms.subtitle) || '',
+                  description: findValue(row, synonyms.description) || '',
+                  uses: findValue(row, synonyms.uses) || '',
+                  price: parseSafeNumber(findValue(row, synonyms.price)),
+                  stock: parseInt(parseSafeNumber(findValue(row, synonyms.stock)), 10),
+                  images: [], 
+                  category: rowCat
+                };
               });
-              return newRow;
-            });
-          }
 
-          const newCategories = new Set();
-          const existingCategories = settings.product_categories || ['Polipropileno', 'Polietileno'];
-
-          // Función para limpiar y normalizar los nombres de las columnas (Resiliente a BOM)
-          const normalizeKey = (key) => {
-            if (!key) return '';
-            return String(key).toLowerCase()
-              .trim()
-              .replace(/^\uFEFF/, '') // Eliminar BOM de Excel
-              .normalize("NFD")
-              .replace(/[\u0300-\u036f]/g, ""); // Quitar acentos
-          };
-
-          const parseSafeNumber = (val) => {
-            if (!val) return 0;
-            // Quitar comillas, símbolos de moneda y espacios
-            let clean = String(val).replace(/["'$]/g, '').trim();
-            clean = clean.replace(/[^\d.,-]/g, '');
-            
-            // Si tiene más de un separador, asumimos que el punto/coma es de miles
-            if ((clean.match(/\./g) || []).length > 0 && clean.indexOf('.') < clean.length - 3) {
-              clean = clean.replace(/\./g, '');
+            if (formattedData.length === 0) {
+              throw new Error('No se encontraron datos válidos. Verifica el formato de la plantilla.');
             }
-            if ((clean.match(/,/g) || []).length > 0 && clean.indexOf(',') < clean.length - 3) {
-              clean = clean.replace(/,/g, '');
-            }
-            
-            const final = clean.replace(',', '.');
-            const num = parseFloat(final);
-            return isNaN(num) ? 0 : num;
-          };
-
-          const findValue = (row, synonyms) => {
-            const foundKey = Object.keys(row).find(k => synonyms.includes(normalizeKey(k)));
-            if (!foundKey) return null;
-            // Limpiar comillas de Excel en los valores
-            return String(row[foundKey]).trim().replace(/^"|"$/g, '');
-          };
-
-          const synonyms = {
-            name: ['nombre', 'producto', 'name', 'articulo', 'item', 'descripcion'],
-            subtitle: ['caracteristica', 'subtitulo', 'medida', 'referencia', 'subtitle'],
-            description: ['descripcion', 'detalles', 'description'],
-            uses: ['usos', 'aplicaciones', 'uses'],
-            price: ['precio', 'valor', 'costo', 'price', 'venta'],
-            stock: ['existencias', 'stock', 'cantidad', 'inventario', 'qty'],
-            category: ['categoria', 'linea', 'grupo', 'category']
-          };
-
-          const formattedData = rows
-            .filter(row => findValue(row, synonyms.name))
-            .map(row => {
-              const rowCat = findValue(row, synonyms.category) || 'Sin Categoría';
-              if (rowCat !== 'Sin Categoría' && !existingCategories.includes(rowCat)) {
-                newCategories.add(rowCat);
-              }
-
-              return {
-                name: findValue(row, synonyms.name) || 'Sin nombre',
-                subtitle: findValue(row, synonyms.subtitle) || '',
-                description: findValue(row, synonyms.description) || '',
-                uses: findValue(row, synonyms.uses) || '',
-                price: parseSafeNumber(findValue(row, synonyms.price)),
-                stock: parseInt(parseSafeNumber(findValue(row, synonyms.stock)), 10),
-                images: [], 
-                category: rowCat
-              };
-            });
-
-          if (formattedData.length === 0) {
-            throw new Error('No se encontraron datos válidos. Verifica que el archivo sea CSV delimitado por punto y coma.');
-          }
 
           // Si hay categorías nuevas, agregarlas a los ajustes automáticamente
           if (newCategories.size > 0) {
@@ -206,6 +176,8 @@ export default function AdminDashboard() {
         }
       }
     });
+    };
+    reader.readAsText(file);
   };
 
   const downloadCSVTemplate = () => {
