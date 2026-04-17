@@ -71,22 +71,35 @@ export default function AdminDashboard() {
         try {
           let rows = results.data;
           
-          // --- LÓGICA DE RESCATE (PLAN B) ---
-          // Si PapaParse detectó solo 1 columna pero contiene ';' es que falló el delimitador
-          if (rows.length > 0 && Object.keys(rows[0]).length === 1) {
-            const firstKey = Object.keys(rows[0])[0];
-            if (firstKey.includes(';')) {
-              console.warn("Auto-reparando archivo: Delimitador punto y coma detectado.");
-              const rawHeaders = firstKey.split(';');
-              rows = rows.map(row => {
-                const rawValues = Object.values(row)[0].split(';');
-                const newRow = {};
-                rawHeaders.forEach((h, i) => {
-                  newRow[h] = rawValues[i] || '';
-                });
-                return newRow;
+          // --- LÓGICA DE RESCATE (PLAN B v3 - Blindado) ---
+          // El navegador a veces crea la columna técnica '__parsed_extra' si falla el delimitador.
+          // Ignoramos esa columna al contar para detectar si hubo solo un encabezado gigante (;).
+          const isSingleKeyFailure = (row) => {
+            if (!row) return false;
+            const keys = Object.keys(row).filter(k => k !== '__parsed_extra');
+            return keys.length === 1 && keys[0].includes(';');
+          };
+
+          if (rows.length > 0 && isSingleKeyFailure(rows[0])) {
+            console.warn("Auto-reparando archivo: Delimitador punto y coma detectado en el encabezado.");
+            const keys = Object.keys(rows[0]).filter(k => k !== '__parsed_extra');
+            const rawHeaders = keys[0].split(';');
+            
+            rows = rows.map(row => {
+              // Reconstruir la fila: El valor del primer key + los datos desplazados en __parsed_extra
+              let fullRowString = String(Object.values(row).filter((_, i) => Object.keys(row)[i] !== '__parsed_extra')[0]);
+              
+              if (row.__parsed_extra && Array.isArray(row.__parsed_extra)) {
+                fullRowString += ';' + row.__parsed_extra.join(';');
+              }
+              
+              const rawValues = fullRowString.split(';');
+              const newRow = {};
+              rawHeaders.forEach((h, i) => {
+                newRow[h] = rawValues[i] || '';
               });
-            }
+              return newRow;
+            });
           }
 
           const newCategories = new Set();
@@ -108,6 +121,7 @@ export default function AdminDashboard() {
             let clean = String(val).replace(/["'$]/g, '').trim();
             clean = clean.replace(/[^\d.,-]/g, '');
             
+            // Si tiene más de un separador, asumimos que el punto/coma es de miles
             if ((clean.match(/\./g) || []).length > 0 && clean.indexOf('.') < clean.length - 3) {
               clean = clean.replace(/\./g, '');
             }
