@@ -71,9 +71,10 @@ export default function AdminDashboard() {
         try {
           let rows = results.data;
           
-          // --- LÓGICA DE RESCATE (PLAN B v3 - Blindado) ---
-          // El navegador a veces crea la columna técnica '__parsed_extra' si falla el delimitador.
-          // Ignoramos esa columna al contar para detectar si hubo solo un encabezado gigante (;).
+          // --- LÓGICA DE RESCATE (PLAN B v4 - RECURSIVA DEFINITIVA) ---
+          // Marca de versión para verificar despliegue en Vercel
+          console.log("[Bioplast v3.1] Motor de Rescate Activo");
+
           const isSingleKeyFailure = (row) => {
             if (!row) return false;
             const keys = Object.keys(row).filter(k => k !== '__parsed_extra');
@@ -81,19 +82,26 @@ export default function AdminDashboard() {
           };
 
           if (rows.length > 0 && isSingleKeyFailure(rows[0])) {
-            console.warn("Auto-reparando archivo: Delimitador punto y coma detectado en el encabezado.");
-            const keys = Object.keys(rows[0]).filter(k => k !== '__parsed_extra');
-            const rawHeaders = keys[0].split(';');
+            console.warn("Auto-reparando archivo: Detectados delimitadores complejos.");
+            
+            // Reparar encabezados con Papa para respetar posibles comillas
+            const firstHeaderKey = Object.keys(rows[0]).filter(k => k !== '__parsed_extra')[0];
+            const headerParse = Papa.parse(firstHeaderKey, { delimiter: ';' });
+            const rawHeaders = headerParse.data[0] || [];
             
             rows = rows.map(row => {
-              // Reconstruir la fila: El valor del primer key + los datos desplazados en __parsed_extra
-              let fullRowString = String(Object.values(row).filter((_, i) => Object.keys(row)[i] !== '__parsed_extra')[0]);
+              // Reconstruir la fila uniendo el valor principal con los datos desplazados
+              const firstValue = Object.values(row).filter((_, i) => Object.keys(row)[i] !== '__parsed_extra')[0];
+              let fullRowString = String(firstValue);
               
               if (row.__parsed_extra && Array.isArray(row.__parsed_extra)) {
                 fullRowString += ';' + row.__parsed_extra.join(';');
               }
               
-              const rawValues = fullRowString.split(';');
+              // PARSE RECURSIVO: Usar PapaParse de nuevo para separar respetando comillas
+              const innerParse = Papa.parse(fullRowString, { delimiter: ';' });
+              const rawValues = innerParse.data[0] || [];
+              
               const newRow = {};
               rawHeaders.forEach((h, i) => {
                 newRow[h] = rawValues[i] || '';
