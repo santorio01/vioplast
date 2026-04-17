@@ -2,7 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useCart } from '../lib/CartContext';
-import { ShoppingBag, CheckCircle, CreditCard, Banknote, Truck, Clock, Plus, Search } from 'lucide-react';
+import { 
+  ShoppingBag, 
+  CheckCircle, 
+  Plus, 
+  Search, 
+  ChevronLeft, 
+  ChevronRight, 
+  Clock 
+} from 'lucide-react';
 
 export default function Home() {
   const [products, setProducts] = useState([]);
@@ -13,7 +21,26 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const { addToCart } = useCart();
   
-  const clientData = localStorage.getItem('vioplast_client');
+  // Soporte para Carrusel de Categorías
+  const scrollRef = React.useRef(null);
+  const [showLeftArrow, setShowLeftArrow] = useState(false);
+  const [showRightArrow, setShowRightArrow] = useState(true);
+
+  const checkScroll = () => {
+    if (scrollRef.current) {
+      const { scrollLeft, scrollWidth, clientWidth } = scrollRef.current;
+      setShowLeftArrow(scrollLeft > 10);
+      setShowRightArrow(scrollLeft + clientWidth < scrollWidth - 10);
+    }
+  };
+
+  const scroll = (direction) => {
+    if (scrollRef.current) {
+      const { clientWidth } = scrollRef.current;
+      const scrollAmount = direction === 'left' ? -clientWidth / 2 : clientWidth / 2;
+      scrollRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+    }
+  };
   const client = clientData ? JSON.parse(clientData) : null;
 
   useEffect(() => {
@@ -40,6 +67,7 @@ export default function Home() {
       
       if (settingsData?.product_categories) {
         setCategories(settingsData.product_categories);
+        setTimeout(checkScroll, 500); // Check visual initial
       }
 
       // 2. Si hay cliente, cargar historial de pedidos
@@ -143,33 +171,65 @@ export default function Home() {
           </span>
         </div>
 
-        {/* Category Filter & Search Bar */}
-        <div className="flex flex-col lg:flex-row gap-6 mb-8">
-          {/* Categories */}
-          <div className="flex flex-grow overflow-x-auto pb-2 gap-3 no-scrollbar scroll-smooth items-center">
-            <button
-              onClick={() => setSelectedCategory('Todos')}
-              className={`px-6 py-2 rounded-full font-bold transition-all border shrink-0 ${
-                selectedCategory === 'Todos' 
-                  ? 'bg-[#4608C2] text-white border-[#4608C2] shadow-lg shadow-purple-200 scale-105' 
-                  : 'bg-white text-gray-600 border-gray-200 hover:border-[#4608C2] hover:text-[#4608C2]'
-              }`}
+        {/* Category Filter & Search Bar - Sticky on Desktop */}
+        <div className="flex flex-col lg:flex-row gap-6 mb-10 sticky top-[72px] z-30 bg-white/95 backdrop-blur-md py-4 -mx-4 px-4 border-b border-transparent hover:border-gray-100 transition-all">
+          {/* Categories Carousel */}
+          <div className="relative group/nav flex-grow overflow-hidden">
+            {/* Left Arrow */}
+            {showLeftArrow && (
+              <button 
+                onClick={() => scroll('left')}
+                className="absolute left-0 top-1/2 -translate-y-1/2 z-10 p-2 bg-white border border-gray-100 shadow-xl rounded-full text-[#4608C2] hover:bg-[#4608C2] hover:text-white transition-all hidden md:flex"
+              >
+                <ChevronLeft size={20} />
+              </button>
+            )}
+
+            {/* Fade Left */}
+            <div className={`absolute left-0 top-0 bottom-0 w-16 bg-gradient-to-r from-white to-transparent pointer-events-none z-[5] transition-opacity duration-300 ${showLeftArrow ? 'opacity-100' : 'opacity-0'}`}></div>
+
+            <div 
+              ref={scrollRef}
+              onScroll={checkScroll}
+              className="flex overflow-x-auto pb-1 gap-3 no-scrollbar scroll-smooth items-center px-2"
             >
-              Todos
-            </button>
-            {categories.map(cat => (
               <button
-                key={cat}
-                onClick={() => setSelectedCategory(cat)}
-                className={`px-6 py-2 rounded-full font-bold transition-all border shrink-0 ${
-                  selectedCategory === cat 
-                    ? 'bg-[#4608C2] text-white border-[#4608C2] shadow-lg shadow-purple-200 scale-105' 
-                    : 'bg-white text-gray-600 border-gray-200 hover:border-[#4608C2] hover:text-[#4608C2]'
+                onClick={() => setSelectedCategory('Todos')}
+                className={`px-6 py-2.5 rounded-full font-bold transition-all border shrink-0 text-sm ${
+                  selectedCategory === 'Todos' 
+                    ? 'bg-[#4608C2] text-white border-[#4608C2] shadow-lg shadow-purple-200' 
+                    : 'bg-white text-gray-500 border-gray-100 hover:border-[#4608C2]/30 hover:text-[#4608C2]'
                 }`}
               >
-                {cat}
+                Todos
               </button>
-            ))}
+              {categories.map(cat => (
+                <button
+                  key={cat}
+                  onClick={() => setSelectedCategory(cat)}
+                  className={`px-6 py-2.5 rounded-full font-bold transition-all border shrink-0 text-sm ${
+                    selectedCategory === cat 
+                      ? 'bg-[#4608C2] text-white border-[#4608C2] shadow-lg shadow-purple-200' 
+                      : 'bg-white text-gray-500 border-gray-100 hover:border-[#4608C2]/30 hover:text-[#4608C2]'
+                  }`}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
+
+            {/* Right Arrow */}
+            {showRightArrow && (
+              <button 
+                onClick={() => scroll('right')}
+                className="absolute right-0 top-1/2 -translate-y-1/2 z-10 p-2 bg-white border border-gray-100 shadow-xl rounded-full text-[#4608C2] hover:bg-[#4608C2] hover:text-white transition-all hidden md:flex"
+              >
+                <ChevronRight size={20} />
+              </button>
+            )}
+
+            {/* Fade Right */}
+            <div className={`absolute right-0 top-0 bottom-0 w-16 bg-gradient-to-l from-white to-transparent pointer-events-none z-[5] transition-opacity duration-300 ${showRightArrow ? 'opacity-100' : 'opacity-0'}`}></div>
           </div>
 
           {/* Search Box */}
@@ -177,17 +237,17 @@ export default function Home() {
             <Search className="w-5 h-5 absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
             <input 
               type="text" 
-              placeholder="Buscar por nombre o material..." 
+              placeholder="Buscar producto..." 
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-11 pr-4 py-3 rounded-full border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#4608C2] shadow-sm bg-white"
+              className="w-full pl-11 pr-4 py-3 rounded-xl border border-gray-100 focus:outline-none focus:ring-2 focus:ring-[#4608C2] shadow-sm bg-gray-50 focus:bg-white transition-all text-sm"
             />
             {searchTerm && (
               <button 
                 onClick={() => setSearchTerm('')}
                 className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
               >
-                <div className="bg-gray-100 rounded-full p-1"><Plus className="w-4 h-4 rotate-45" /></div>
+                <div className="bg-white/50 rounded-full p-1"><Plus className="w-4 h-4 rotate-45" /></div>
               </button>
             )}
           </div>
