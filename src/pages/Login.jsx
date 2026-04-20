@@ -37,6 +37,7 @@ export default function Login() {
       }
 
       localStorage.setItem('vioplast_client', JSON.stringify(client));
+      window.dispatchEvent(new Event('vioplast_session_change'));
       navigate('/'); // Redirigir al catálogo
     } catch (error) {
       console.error(error);
@@ -62,6 +63,7 @@ export default function Login() {
       }
       
       localStorage.setItem('vioplast_admin', 'true');
+      window.dispatchEvent(new Event('vioplast_session_change'));
       navigate('/admin');
     } catch (error) {
       alert('Error: ' + error.message);

@@ -50,3 +50,30 @@
 ### 4. Estado Actual y Próximos Pasos
 - **Estado:** Funcionalidad de categorías desplegada y verificada localmente. Build productivo generado con éxito.
 - **Próximos Pasos:** El usuario debe ejecutar el script SQL proporcionado para actualizar el esquema en el proyecto real de Supabase.
+
+## 📅 Bitácora de Trabajo - [2026-04-20]
+
+### 1. Resumen de Actividades
+- **Blindaje contra pérdida de pedidos:** Se reforzó la persistencia del carrito y la sesión del cliente mediante `localStorage`. Si el usuario se desconecta o cierra la web, su compra actual permanece intacta.
+- **Gestión Avanzada de Compras (Filtros Admin):** Se implementó un sistema de búsqueda y filtrado en el Admin Dashboard:
+  - **Buscador:** Filtrado por nombre de cliente o ID de pedido.
+  - **Filtros de Fecha:** Visualización predeterminada de "Pedidos de Hoy".
+- **Portal de Clientes Pro (Home):** Transformación de la sección del cliente en un entorno autogestionable:
+  - **Buscador y Filtros Client-Side:** El cliente ahora puede buscar en su historial por ID o nombre de producto.
+  - **Seguimiento de Pagos:** Botón "Pagar / Detalles" para pedidos pendientes que muestra las cuentas oficiales y permite re-enviar el comprobante por WhatsApp.
+  - **Sincronización Total (Full Sync):** Implementación de eventos personalizados (`vioplast_session_change`) para que el Navbar pase de "ENTRAR" a "PERFIL" instantáneamente tras la identificación sin recargar.
+
+### 2. Conocimientos y Lógicas Aplicadas
+- **Sincronización de Eventos:** Se aprendió que el evento `storage` nativo no se dispara en la ventana que realiza el cambio; se integró un `Event` personalizado (`vioplast_session_change`) para garantizar reactividad en la pestaña activa.
+- **UI de Pago Retroactiva:** Se estructuró un modal de detalles que extrae los métodos de pago dinámicamente de `settings`, permitiendo que el cliente pague pedidos "abandonados" o pendientes de días anteriores.
+
+### 3. Errores y Soluciones
+- **Reactividad del Navbar:** El botón de "ENTRAR" no cambiaba tras el login. **Solución:** Sincronización mediante el evento personalizado mencionado arriba.
+- **Fix Crash Componente Home:** Se corrigió un error crítico en `Home.jsx` de hooks faltantes.
+
+### 4. Estado Actual y Próximos Pasos en la siguiente sesión
+- **Estado:** El sistema es ahora un portal de e-commerce completo con flujos bidireccionales (Admin <-> Cliente) y sincronización de sesión instantánea.
+- **Próximos Pasos:**
+  1. Monitorear el uso del portal con clientes reales.
+  2. Implementar notificaciones push si el presupuesto lo permite.
+  3. Optimizar el carrusel de categorías para móviles con menor ancho.

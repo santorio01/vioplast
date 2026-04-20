@@ -2,12 +2,12 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import Papa from 'papaparse';
-import { Package, Upload, Plus, Edit, Trash2, Search, X, Home, LogOut } from 'lucide-react';
+import { Package, Upload, Plus, Edit, Trash2, Search, X, Home, LogOut, Filter, Calendar } from 'lucide-react';
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
   const downloadRef = useRef(null);
-  const [activeTab, setActiveTab] = useState('inventory'); // inventory, settings
+  const [activeTab, setActiveTab] = useState('inventory'); // inventory, settings, orders
   const [configTab, setConfigTab] = useState('sales'); // sales, contact, company
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -30,11 +30,49 @@ export default function AdminDashboard() {
   const [formData, setFormData] = useState({
     name: '', subtitle: '', description: '', uses: '', price: '', stock: '', images: ['', '', ''], category: ''
   });
+  const [orders, setOrders] = useState([]);
+  const [loadingOrders, setLoadingOrders] = useState(false);
+  const [ordersSearchTerm, setOrdersSearchTerm] = useState('');
+  const [ordersDateFilter, setOrdersDateFilter] = useState('today'); // today, yesterday, all
+  const [ordersStatusFilter, setOrdersStatusFilter] = useState('all');
 
   useEffect(() => {
     fetchProducts();
     fetchSettings();
+    fetchOrders();
   }, []);
+
+  const fetchOrders = async () => {
+    setLoadingOrders(true);
+    try {
+      const { data, error } = await supabase
+        .from('orders')
+        .select('*, client:clients(*)')
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      setOrders(data || []);
+    } catch (error) {
+      console.error('Error fetching orders:', error);
+    } finally {
+      setLoadingOrders(false);
+    }
+  };
+
+  const updateOrderStatus = async (orderId, newStatus) => {
+    try {
+      const { error } = await supabase
+        .from('orders')
+        .update({ status: newStatus })
+        .eq('id', orderId);
+      
+      if (error) throw error;
+      showNotification(`Pedido actualizado a ${newStatus}`, 'success');
+      fetchOrders();
+    } catch (error) {
+      alert('Error al actualizar estado');
+    }
+  };
 
   const fetchSettings = async () => {
     try {
@@ -392,6 +430,12 @@ export default function AdminDashboard() {
             >
               Inventario
             </button>
+            <button 
+              onClick={() => setActiveTab('orders')}
+              className={`px-6 py-2 rounded-lg font-bold transition ${activeTab === 'orders' ? 'bg-[#4608C2] text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+            >
+              Compras
+            </button>
           <button 
             onClick={() => setActiveTab('settings')}
             className={`px-6 py-2 rounded-lg font-bold transition ${activeTab === 'settings' ? 'bg-[#4608C2] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
@@ -588,6 +632,203 @@ export default function AdminDashboard() {
         </div>
       )}
       </div>
+      )}
+
+      {activeTab === 'orders' && (
+        <div className="animate-fade-in space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="bg-[#4608C2] text-white p-6 rounded-2xl shadow-lg">
+              <p className="text-xs font-bold uppercase opacity-80 mb-1">Ventas Hoy (Estimado)</p>
+              <p className="text-3xl font-black">
+                ${orders
+                  .filter(o => new Date(o.created_at).toDateString() === new Date().toDateString() && o.status !== 'cancelled')
+                  .reduce((acc, o) => acc + Number(o.total), 0)
+                  .toLocaleString()}
+              </p>
+            </div>
+            <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
+              <p className="text-xs font-bold text-gray-400 uppercase mb-1">Pedidos Pendientes</p>
+              <p className="text-3xl font-black text-gray-800">{orders.filter(o => o.status === 'pending').length}</p>
+            </div>
+            <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
+              <p className="text-xs font-bold text-gray-400 uppercase mb-1">Total Pedidos</p>
+              <p className="text-3xl font-black text-gray-800">{orders.length}</p>
+            </div>
+          </div>
+
+          {/* Filtros de Compras */}
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 mb-6 space-y-4">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+              <div className="relative flex-grow max-w-md">
+                <Search className="w-5 h-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                <input 
+                  type="text" 
+                  placeholder="Buscar por cliente o ID..." 
+                  value={ordersSearchTerm}
+                  onChange={(e) => setOrdersSearchTerm(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-100 focus:outline-none focus:ring-2 focus:ring-[#4608C2] bg-gray-50 text-sm font-medium"
+                />
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                <div className="flex bg-gray-100 p-1 rounded-xl">
+                  {['today', 'yesterday', 'all'].map((f) => (
+                    <button
+                      key={f}
+                      onClick={() => setOrdersDateFilter(f)}
+                      className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                        ordersDateFilter === f 
+                        ? 'bg-white text-[#4608C2] shadow-sm' 
+                        : 'text-gray-500 hover:text-gray-700'
+                      }`}
+                    >
+                      {f === 'today' ? 'Hoy' : f === 'yesterday' ? 'Ayer' : 'Todos'}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="relative">
+                  <select
+                    value={ordersStatusFilter}
+                    onChange={(e) => setOrdersStatusFilter(e.target.value)}
+                    className="appearance-none bg-gray-100 border-none rounded-xl px-4 py-2.5 pr-8 text-xs font-bold text-gray-600 outline-none focus:ring-2 focus:ring-[#4608C2] cursor-pointer"
+                  >
+                    <option value="all">Todos los Estados</option>
+                    <option value="pending">Pendiente</option>
+                    <option value="processing">Seguimiento</option>
+                    <option value="completed">Completado</option>
+                    <option value="cancelled">Cancelado</option>
+                  </select>
+                  <Filter className="w-3 h-3 absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+            <div className="p-4 bg-gray-50 border-b flex justify-between items-center">
+              <h3 className="text-sm font-bold text-gray-600 flex items-center gap-2">
+                <Calendar size={16} className="text-[#4608C2]" />
+                {ordersDateFilter === 'today' ? 'Pedidos del día de hoy' : 
+                 ordersDateFilter === 'yesterday' ? 'Pedidos de ayer' : 'Historial completo de pedidos'}
+              </h3>
+              <span className="text-[10px] font-black bg-[#4608C2]/10 text-[#4608C2] px-3 py-1 rounded-full uppercase tracking-widest">
+                {orders.filter(o => {
+                  const oDate = new Date(o.created_at);
+                  const today = new Date();
+                  const yesterday = new Date();
+                  yesterday.setDate(yesterday.getDate() - 1);
+                  
+                  const matchesSearch = o.id.toLowerCase().includes(ordersSearchTerm.toLowerCase()) || 
+                                       (o.client?.name || '').toLowerCase().includes(ordersSearchTerm.toLowerCase());
+                  const matchesStatus = ordersStatusFilter === 'all' || o.status === ordersStatusFilter;
+                  let matchesDate = true;
+                  if (ordersDateFilter === 'today') matchesDate = oDate.toDateString() === today.toDateString();
+                  else if (ordersDateFilter === 'yesterday') matchesDate = oDate.toDateString() === yesterday.toDateString();
+                  
+                  return matchesSearch && matchesStatus && matchesDate;
+                }).length} Pedidos
+              </span>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left">
+                <thead>
+                  <tr className="bg-gray-50 border-b text-xs font-bold text-gray-500 uppercase tracking-widest">
+                    <th className="p-4">ID Pedido / Fecha</th>
+                    <th className="p-4">Cliente</th>
+                    <th className="p-4">Productos</th>
+                    <th className="p-4">Total</th>
+                    <th className="p-4">Estado</th>
+                    <th className="p-4 text-right">Gestión</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {loadingOrders ? (
+                    <tr><td colSpan="6" className="p-10 text-center">Cargando compras...</td></tr>
+                  ) : orders.filter(o => {
+                    const oDate = new Date(o.created_at);
+                    const today = new Date();
+                    const yesterday = new Date();
+                    yesterday.setDate(yesterday.getDate() - 1);
+                    
+                    const matchesSearch = o.id.toLowerCase().includes(ordersSearchTerm.toLowerCase()) || 
+                                         (o.client?.name || '').toLowerCase().includes(ordersSearchTerm.toLowerCase());
+                    const matchesStatus = ordersStatusFilter === 'all' || o.status === ordersStatusFilter;
+                    let matchesDate = true;
+                    if (ordersDateFilter === 'today') matchesDate = oDate.toDateString() === today.toDateString();
+                    else if (ordersDateFilter === 'yesterday') matchesDate = oDate.toDateString() === yesterday.toDateString();
+                    
+                    return matchesSearch && matchesStatus && matchesDate;
+                  }).length === 0 ? (
+                    <tr><td colSpan="6" className="p-10 text-center text-gray-400 italic">No hay compras que coincidan con los filtros.</td></tr>
+                  ) : (
+                    orders
+                      .filter(o => {
+                        const oDate = new Date(o.created_at);
+                        const today = new Date();
+                        const yesterday = new Date();
+                        yesterday.setDate(yesterday.getDate() - 1);
+                        
+                        const matchesSearch = o.id.toLowerCase().includes(ordersSearchTerm.toLowerCase()) || 
+                                             (o.client?.name || '').toLowerCase().includes(ordersSearchTerm.toLowerCase());
+                        const matchesStatus = ordersStatusFilter === 'all' || o.status === ordersStatusFilter;
+                        let matchesDate = true;
+                        if (ordersDateFilter === 'today') matchesDate = oDate.toDateString() === today.toDateString();
+                        else if (ordersDateFilter === 'yesterday') matchesDate = oDate.toDateString() === yesterday.toDateString();
+                        
+                        return matchesSearch && matchesStatus && matchesDate;
+                      })
+                      .map(order => (
+                      <tr key={order.id} className="hover:bg-gray-50 transition-colors">
+                        <td className="p-4">
+                          <p className="font-mono text-[10px] text-gray-400">#{order.id.substring(0, 8)}</p>
+                          <p className="text-xs font-bold">{new Date(order.created_at).toLocaleString()}</p>
+                        </td>
+                        <td className="p-4">
+                          <p className="font-bold text-sm">{order.client?.name || 'Cliente desconocido'}</p>
+                          <p className="text-[10px] text-gray-500">{order.client?.cedula} | {order.client?.phone}</p>
+                        </td>
+                        <td className="p-4">
+                          <div className="max-w-[200px] space-y-1">
+                            {order.items?.map((it, i) => (
+                              <p key={i} className="text-[10px] leading-tight">• {it.name} <span className="font-bold text-[#4608C2]">x{it.quantity}</span></p>
+                            ))}
+                          </div>
+                        </td>
+                        <td className="p-4 font-black text-[#4608C2] text-sm">
+                          ${Number(order.total).toLocaleString()}
+                        </td>
+                        <td className="p-4">
+                          <span className={`text-[10px] px-2 py-1 rounded-full font-black uppercase tracking-tighter ${
+                            order.status === 'completed' ? 'bg-green-100 text-green-700' : 
+                            order.status === 'cancelled' ? 'bg-red-100 text-red-700' : 
+                            order.status === 'processing' ? 'bg-blue-100 text-blue-700' : 'bg-yellow-100 text-yellow-700'
+                          }`}>
+                            {order.status === 'completed' ? 'Pagado' : 
+                             order.status === 'cancelled' ? 'Cancelado' : 
+                             order.status === 'processing' ? 'En Seguimiento' : 'Pendiente'}
+                          </span>
+                        </td>
+                        <td className="p-4 text-right">
+                          <select 
+                            value={order.status}
+                            onChange={(e) => updateOrderStatus(order.id, e.target.value)}
+                            className="text-[10px] font-bold border rounded-lg p-1 bg-white outline-none focus:ring-2 focus:ring-[#4608C2]"
+                          >
+                            <option value="pending">Pendiente</option>
+                            <option value="processing">Seguimiento</option>
+                            <option value="completed">Completado</option>
+                            <option value="cancelled">Cancelado</option>
+                          </select>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
       )}
 
       {activeTab === 'settings' && (

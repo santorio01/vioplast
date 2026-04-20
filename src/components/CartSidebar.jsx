@@ -65,6 +65,9 @@ export default function CartSidebar() {
 
       localStorage.setItem('vioplast_client', JSON.stringify(finalClient));
       setStep(3); // Avanzar a pagos
+      
+      // Notificar un cambio de sesión global para Navbar y Home
+      window.dispatchEvent(new Event('vioplast_session_change'));
     } catch (error) {
       alert('Error guardando tus datos.');
     } finally {

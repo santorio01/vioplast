@@ -12,10 +12,21 @@ export default function Navbar() {
   const [client, setClient] = useState(null);
 
   useEffect(() => {
-    const adminStatus = localStorage.getItem('vioplast_admin') === 'true';
-    const clientData = localStorage.getItem('vioplast_client');
-    setIsAdmin(adminStatus);
-    if (clientData) setClient(JSON.parse(clientData));
+    const syncStatus = () => {
+      const adminStatus = localStorage.getItem('vioplast_admin') === 'true';
+      const clientData = localStorage.getItem('vioplast_client');
+      setIsAdmin(adminStatus);
+      if (clientData) setClient(JSON.parse(clientData));
+      else setClient(null);
+    };
+
+    syncStatus();
+    window.addEventListener('storage', syncStatus);
+    window.addEventListener('vioplast_session_change', syncStatus);
+    return () => {
+      window.removeEventListener('storage', syncStatus);
+      window.removeEventListener('vioplast_session_change', syncStatus);
+    };
   }, []);
 
   const handleLogout = () => {

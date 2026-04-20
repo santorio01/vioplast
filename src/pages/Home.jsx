@@ -9,26 +9,53 @@ import {
   Search, 
   ChevronLeft, 
   ChevronRight, 
-  Clock 
+  Clock,
+  Send,
+  Eye,
+  Info,
+  X
 } from 'lucide-react';
 
 export default function Home() {
+  const [client, setClient] = useState(() => {
+    const data = localStorage.getItem('vioplast_client');
+    return data ? JSON.parse(data) : null;
+  });
+  const { cart, addToCart, totalPrice, clearCart, removeFromCart } = useCart();
+  
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState(['Polipropileno', 'Polietileno']);
   const [selectedCategory, setSelectedCategory] = useState('Todos');
   const [searchTerm, setSearchTerm] = useState('');
   const [pastOrders, setPastOrders] = useState([]);
+  const [orderSearchTerm, setOrderSearchTerm] = useState('');
+  const [orderStatusFilter, setOrderStatusFilter] = useState('all');
+  const [selectedOrderDetails, setSelectedOrderDetails] = useState(null);
   const [loading, setLoading] = useState(true);
-  const { addToCart } = useCart();
+  const [settings, setSettings] = useState(null);
   
   // Soporte para Carrusel de Categorías
   const scrollRef = React.useRef(null);
   const [showLeftArrow, setShowLeftArrow] = useState(false);
   const [showRightArrow, setShowRightArrow] = useState(true);
 
-  // Restaurar contexto de cliente
-  const clientData = localStorage.getItem('vioplast_client');
-  const client = clientData ? JSON.parse(clientData) : null;
+  useEffect(() => {
+    const handleSync = () => {
+      const data = localStorage.getItem('vioplast_client');
+      if (data) {
+        setClient(JSON.parse(data));
+      } else {
+        setClient(null);
+      }
+      fetchData();
+    };
+    window.addEventListener('storage', handleSync);
+    window.addEventListener('vioplast_session_change', handleSync);
+    return () => {
+      window.removeEventListener('storage', handleSync);
+      window.removeEventListener('vioplast_session_change', handleSync);
+    };
+  }, []);
 
   const checkScroll = () => {
     if (scrollRef.current) {
@@ -48,9 +75,10 @@ export default function Home() {
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [client?.id]);
 
   const fetchData = async () => {
+    setLoading(true);
     try {
       // 1. Cargar productos
       const { data: prodData, error: prodErr } = await supabase
@@ -61,26 +89,29 @@ export default function Home() {
       if (prodErr) throw prodErr;
       setProducts(prodData || []);
 
-      // 2. Cargar Categorías desde settings
+      // 2. Cargar Categorías y WhatsApp desde settings
       const { data: settingsData } = await supabase
         .from('settings')
-        .select('product_categories')
+        .select('*')
         .limit(1)
         .single();
       
-      if (settingsData?.product_categories) {
-        setCategories(settingsData.product_categories);
-        setTimeout(checkScroll, 500); // Check visual initial
+      if (settingsData) {
+        setSettings(settingsData);
+        if (settingsData.product_categories) {
+          setCategories(settingsData.product_categories);
+          setTimeout(checkScroll, 500);
+        }
       }
 
-      // 2. Si hay cliente, cargar historial de pedidos
+      // 3. Si hay cliente, cargar historial de pedidos
       if (client?.id) {
         const { data: orderData } = await supabase
           .from('orders')
           .select('*')
           .eq('client_id', client.id)
           .order('created_at', { ascending: false })
-          .limit(5);
+          .limit(10);
         
         if (orderData) setPastOrders(orderData);
       }
@@ -90,6 +121,23 @@ export default function Home() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleResendOrder = (order) => {
+    const storePhone = settings?.store_whatsapp || '573000000000';
+    let msg = `Hola Vioplast! Re-envió la confirmación de mi pedido.%0A%0A`;
+    msg += `*ID Pedido:* ${order.id.substring(0, 8)}%0A`;
+    msg += `*Cédula:* ${client.cedula} - *Cliente:* ${client.name}%0A%0A`;
+    
+    msg += `*PRODUCTOS:*%0A`;
+    order.items.forEach((item, i) => {
+      msg += `${i+1}. ${item.name} (x${item.quantity}) - $${(item.price * item.quantity).toLocaleString()}%0A`;
+    });
+    msg += `%0A*TOTAL: $${Number(order.total).toLocaleString()}*%0A`;
+    msg += `%0A*Estado:* ${order.status === 'completed' ? 'Pagado' : 'Pendiente'}`;
+
+    const waUrl = `https://wa.me/${storePhone}?text=${msg}`;
+    window.open(waUrl, '_blank');
   };
 
   const filteredProducts = products.filter(p => {
@@ -102,65 +150,262 @@ export default function Home() {
   return (
     <div className="flex flex-col min-h-screen">
       {/* Hero Section */}
-      <section className="bg-gradient-to-r from-[#4608C2] to-[#6225e6] text-white py-12 md:py-20 px-4 text-center">
-        <h1 className="text-4xl md:text-5xl font-bold mb-4">Soluciones en Plásticos y Empaques</h1>
-        <p className="text-lg md:text-xl max-w-2xl mx-auto opacity-90 mb-8">
-          Encuentra la mejor calidad en morrales, bolsas y plásticos para tu negocio u hogar en Vioplast.
-        </p>
-        <div className="flex justify-center gap-4">
-          <a href="#catalogo" className="bg-[#00e676] text-black font-bold px-8 py-3 rounded-full hover:bg-white transition-all shadow-lg transform hover:scale-105">
-            Ver Catálogo
-          </a>
-          <Link to="/sobre-nosotros" className="bg-white/10 backdrop-blur-md border border-white/20 text-white font-bold px-8 py-3 rounded-full hover:bg-white/20 transition-all shadow-lg transform hover:scale-105">
-            Quiénes Somos
-          </Link>
+      <section className="bg-gradient-to-r from-[#4608C2] to-[#6225e6] text-white py-12 md:py-20 px-4 text-center relative overflow-hidden">
+        <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] animate-pulse"></div>
+        <div className="relative z-10">
+          <h1 className="text-4xl md:text-5xl font-extrabold mb-4 tracking-tight">Soluciones en Plásticos y Empaques</h1>
+          <p className="text-lg md:text-xl max-w-2xl mx-auto opacity-90 mb-8 font-medium">
+            Calidad premium en morrales, bolsas y plásticos para tu industria y hogar.
+          </p>
+          <div className="flex flex-col sm:flex-row justify-center gap-4">
+            <a href="#catalogo" className="bg-[#00e676] text-black font-black uppercase text-sm tracking-wider px-10 py-4 rounded-full hover:bg-white transition-all shadow-xl transform hover:-translate-y-1">
+              Explorar Catálogo
+            </a>
+            <Link to="/sobre-nosotros" className="bg-white/10 backdrop-blur-md border border-white/20 text-white font-black uppercase text-sm tracking-wider px-10 py-4 rounded-full hover:bg-white/20 transition-all shadow-xl transform hover:-translate-y-1">
+              Conócenos
+            </Link>
+          </div>
         </div>
       </section>
 
-      {/* Catálogo Anchor */}
-      <div id="catalogo"></div>
-
-
-      {/* Historial de Compras (Solo para clientes) */}
+      {/* SECCIÓN DE GESTIÓN DE COMPRAS (Doble Columna para Clientes) */}
       {client && (
-        <section className="bg-purple-50 border-b border-purple-100">
-          <div className="max-w-7xl mx-auto px-4 py-8">
-            <h2 className="text-xl font-bold text-[#4608C2] mb-4 flex items-center gap-2">
-              <Clock size={24} /> Tus últimas compras
-            </h2>
+        <section className="bg-white border-b relative z-20 shadow-2xl -mt-6 mx-4 rounded-3xl overflow-hidden max-w-7xl lg:mx-auto mb-10">
+          <div className="grid grid-cols-1 lg:grid-cols-12">
             
-            {pastOrders.length === 0 ? (
-              <p className="text-sm text-gray-500">Aún no tienes compras previas registradas.</p>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {pastOrders.map(order => (
-                  <div key={order.id} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-                    <div className="flex justify-between items-center mb-3 pb-2 border-b">
-                      <span className="text-xs text-gray-400 font-mono">ID: {order.id.substring(0,8)}</span>
-                      <span className="text-xs font-bold uppercase px-2 py-1 bg-green-100 text-green-800 rounded-full">{order.status}</span>
+            {/* COLUMNA IZQUIERDA: CARRITO ACTUAL */}
+            <div className="lg:col-span-5 p-8 bg-gray-50 border-r border-gray-100 flex flex-col">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-black text-gray-800 flex items-center gap-2 uppercase tracking-tighter">
+                  <ShoppingBag className="text-[#4608C2]" /> Tu Compra de Hoy
+                </h2>
+                {cart.length > 0 && (
+                  <button onClick={clearCart} className="text-xs font-bold text-red-500 hover:underline">Vaciar</button>
+                )}
+              </div>
+
+              {cart.length === 0 ? (
+                <div className="flex-grow flex flex-col items-center justify-center py-10 opacity-40">
+                  <p className="text-sm font-bold text-gray-400">No tienes productos en el carrito aún.</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="max-h-[300px] overflow-y-auto space-y-3 pr-2 custom-scrollbar">
+                    {cart.map(item => (
+                      <div key={item.id} className="flex gap-3 items-center bg-white p-3 rounded-2xl border border-gray-100 shadow-sm group">
+                        <div className="w-12 h-12 bg-gray-100 rounded-xl overflow-hidden">
+                          <img src={item.images?.[0] || 'https://placehold.co/100x100'} className="w-full h-full object-cover" alt="" />
+                        </div>
+                        <div className="flex-grow">
+                          <h4 className="text-xs font-black text-gray-800 leading-tight uppercase">{item.name}</h4>
+                          <p className="text-[10px] text-gray-400 font-bold mt-0.5">Ctd: {item.quantity}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-xs font-black text-[#4608C2]">${(item.price * item.quantity).toLocaleString()}</p>
+                          <button onClick={() => removeFromCart(item.id)} className="text-[10px] font-bold text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity">Quitar</button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="pt-6 border-t mt-4">
+                    <div className="flex justify-between items-center mb-4">
+                      <span className="text-sm font-bold text-gray-500 uppercase tracking-widest">Total Parcial:</span>
+                      <span className="text-2xl font-black text-[#4608C2]">${totalPrice.toLocaleString()}</span>
                     </div>
-                    <ul className="text-sm space-y-1 mb-3">
-                      {order.items?.slice(0, 3).map((item, i) => (
-                        <li key={i} className="text-gray-700 flex justify-between">
-                          <span className="truncate pr-2">{item.name}</span>
-                          <span className="font-bold text-gray-400">x{item.quantity}</span>
-                        </li>
-                      ))}
-                      {order.items?.length > 3 && <li className="text-xs text-gray-400 italic">...y más</li>}
-                    </ul>
                     <button 
-                      onClick={() => order.items.forEach(item => addToCart(item, item.quantity))}
-                      className="w-full text-center text-sm font-bold text-[#4608C2] bg-purple-50 hover:bg-purple-100 py-2 rounded-lg transition"
+                      onClick={() => document.querySelector('[class*="bottom-6 right-6"]').click()} // Abre el sidebar para finalizar
+                      className="w-full bg-[#00e676] text-black font-black text-sm uppercase tracking-widest py-4 rounded-2xl shadow-lg hover:shadow-[#00e676]/20 transition-all hover:-translate-y-1"
                     >
-                      Volver a pedir esto
+                      Finalizar Pedido
                     </button>
                   </div>
-                ))}
+                </div>
+              )}
+            </div>
+
+            {/* COLUMNA DERECHA: HISTORIAL DE PEDIDOS / PORTAL */}
+            <div className="lg:col-span-7 p-8 flex flex-col">
+              <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
+                <h2 className="text-xl font-black text-gray-800 flex items-center gap-2 uppercase tracking-tighter">
+                  <Clock className="text-gray-400" /> Portal de Clientes
+                </h2>
+                <div className="flex gap-2 flex-grow max-w-md">
+                   <div className="relative flex-grow">
+                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+                     <input 
+                       type="text" 
+                       placeholder="Buscar pedido o producto..."
+                       value={orderSearchTerm}
+                       onChange={(e) => setOrderSearchTerm(e.target.value)}
+                       className="w-full pl-9 pr-4 py-2 bg-gray-50 border border-gray-100 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-[#4608C2]/20"
+                     />
+                   </div>
+                   <select 
+                     value={orderStatusFilter}
+                     onChange={(e) => setOrderStatusFilter(e.target.value)}
+                     className="bg-gray-50 border border-gray-100 rounded-xl px-3 py-2 text-xs font-bold text-gray-500 outline-none"
+                   >
+                     <option value="all">Ver Todos</option>
+                     <option value="pending">Pendientes</option>
+                     <option value="completed">Pagados</option>
+                     <option value="cancelled">Cancelados</option>
+                   </select>
+                </div>
               </div>
-            )}
+
+              {pastOrders.filter(o => {
+                const matchesSearch = o.id.toLowerCase().includes(orderSearchTerm.toLowerCase()) || 
+                                     o.items?.some(it => it.name.toLowerCase().includes(orderSearchTerm.toLowerCase()));
+                const matchesStatus = orderStatusFilter === 'all' || o.status === orderStatusFilter;
+                return matchesSearch && matchesStatus;
+              }).length === 0 ? (
+                <div className="flex-grow flex flex-col items-center justify-center py-20 bg-gray-50/50 rounded-3xl border border-dashed border-gray-200">
+                  <p className="text-sm font-bold text-gray-400 italic">No se encontraron pedidos con estos filtros.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {pastOrders
+                    .filter(o => {
+                      const matchesSearch = o.id.toLowerCase().includes(orderSearchTerm.toLowerCase()) || 
+                                           o.items?.some(it => it.name.toLowerCase().includes(orderSearchTerm.toLowerCase()));
+                      const matchesStatus = orderStatusFilter === 'all' || o.status === orderStatusFilter;
+                      return matchesSearch && matchesStatus;
+                    })
+                    .map(order => (
+                    <div key={order.id} className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm hover:border-[#4608C2]/30 transition-all group">
+                      <div className="flex justify-between items-start mb-3">
+                        <div>
+                          <p className="text-[10px] font-black text-gray-400 mb-1">PEDIDO {order.id.split('-')[0].toUpperCase()}</p>
+                          <p className="text-xs font-bold text-gray-500">{new Date(order.created_at).toLocaleDateString()}</p>
+                        </div>
+                        <span className={`text-[10px] px-3 py-1 rounded-full font-black uppercase tracking-widest ${
+                          order.status === 'completed' ? 'bg-green-100 text-green-700' : 
+                          order.status === 'cancelled' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'
+                        }`}>
+                          {order.status === 'completed' ? 'Pagado' : order.status === 'cancelled' ? 'Cancelado' : 'Pendiente'}
+                        </span>
+                      </div>
+
+                      <div className="space-y-1 mb-4 h-[60px] overflow-hidden opacity-80">
+                        {order.items?.map((it, idx) => (
+                          <p key={idx} className="text-[10px] font-medium text-gray-600 truncate">• {it.name} (x{it.quantity})</p>
+                        ))}
+                      </div>
+
+                      <div className="flex gap-2">
+                        {order.status === 'pending' && (
+                          <button 
+                            onClick={() => setSelectedOrderDetails(order)}
+                            className="flex-grow bg-[#4608C2] text-white text-[10px] font-black uppercase tracking-widest py-2.5 rounded-xl transition hover:brightness-110 flex items-center justify-center gap-1.5"
+                          >
+                            <Eye size={14} /> Pagar / Detalles
+                          </button>
+                        )}
+                        {order.status !== 'pending' && (
+                          <button 
+                            onClick={() => order.items.forEach(item => addToCart(item, item.quantity))}
+                            className="flex-grow bg-purple-50 hover:bg-purple-100 text-[#4608C2] text-[10px] font-black uppercase tracking-widest py-2.5 rounded-xl transition"
+                          >
+                            Re-Pedir
+                          </button>
+                        )}
+                        <button 
+                          onClick={() => handleResendOrder(order)}
+                          className="p-2.5 bg-gray-50 hover:bg-gray-100 text-gray-500 rounded-xl transition"
+                          title="Volver a enviar código por WhatsApp"
+                        >
+                          <Send size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
           </div>
         </section>
       )}
+
+      {/* MODAL DE DETALLES DE PAGO Y PEDIDO */}
+      {selectedOrderDetails && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white rounded-[32px] w-full max-w-lg shadow-2xl overflow-hidden animate-scale-in">
+            <div className="p-6 bg-[#4608C2] text-white flex justify-between items-center">
+              <div>
+                <h3 className="text-xl font-black uppercase tracking-tight">Detalles de tu Pedido</h3>
+                <p className="text-xs font-bold opacity-70">#{selectedOrderDetails.id.split('-')[0].toUpperCase()} • {new Date(selectedOrderDetails.created_at).toLocaleDateString()}</p>
+              </div>
+              <button 
+                onClick={() => setSelectedOrderDetails(null)}
+                className="bg-white/10 hover:bg-white/20 p-2 rounded-full transition"
+              >
+                <X size={24} />
+              </button>
+            </div>
+            
+            <div className="p-6 max-h-[70vh] overflow-y-auto">
+              <div className="mb-6">
+                <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                  <ShoppingBag size={14} /> Resumen de Compra
+                </h4>
+                <div className="space-y-2">
+                  {selectedOrderDetails.items?.map((it, i) => (
+                    <div key={i} className="flex justify-between items-center text-sm">
+                      <span className="font-bold text-gray-700">{it.name} <span className="text-gray-400">x{it.quantity}</span></span>
+                      <span className="font-black text-[#4608C2]">${(it.price * it.quantity).toLocaleString()}</span>
+                    </div>
+                  ))}
+                  <div className="pt-3 border-t flex justify-between items-center">
+                    <span className="font-black text-gray-800 uppercase text-xs">Total a Pagar</span>
+                    <span className="text-2xl font-black text-[#4608C2]">${Number(selectedOrderDetails.total).toLocaleString()}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-purple-50 rounded-2xl p-5 border border-purple-100">
+                <h4 className="text-xs font-black text-[#4608C2] uppercase tracking-widest mb-4 flex items-center gap-2">
+                  <Info size={14} /> Métodos de Pago Disponibles
+                </h4>
+                <div className="space-y-3">
+                  {!settings?.payment_methods || settings.payment_methods.length === 0 ? (
+                    <p className="text-xs text-gray-500 font-bold italic">Contacta al administrador para detalles de pago.</p>
+                  ) : (
+                    settings.payment_methods.map((pm, i) => (
+                      <div key={i} className="bg-white p-3 rounded-xl border border-purple-50 shadow-sm">
+                        <p className="text-[10px] font-black text-purple-400 uppercase mb-0.5">{pm.type}</p>
+                        <p className="text-sm font-bold text-gray-800">{pm.details}</p>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="p-6 bg-gray-50 border-t flex flex-col gap-3">
+              <button 
+                onClick={() => {
+                  handleResendOrder(selectedOrderDetails);
+                  setSelectedOrderDetails(null);
+                }}
+                className="w-full bg-[#00e676] hover:bg-[#00c853] text-black font-black py-4 rounded-2xl shadow-lg transition-all flex items-center justify-center gap-2 uppercase text-xs tracking-widest"
+              >
+                <Send size={18} /> Confirmar Pago por WhatsApp
+              </button>
+              <button 
+                onClick={() => setSelectedOrderDetails(null)}
+                className="w-full text-gray-500 font-bold text-xs uppercase tracking-widest py-2 hover:text-gray-700 transition"
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Catálogo Anchor */}
+      <div id="catalogo"></div>
 
       {/* Catalog Section */}
       <section className="flex-grow max-w-7xl mx-auto px-4 py-12 w-full">
