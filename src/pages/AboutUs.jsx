@@ -9,6 +9,8 @@ export default function AboutUs() {
     address: '', 
     imageUrl: '', 
     mapEmbed: '',
+    schedule: '',
+    scheduleSaturday: '',
     gallery: [] 
   });
   const [loading, setLoading] = useState(true);
@@ -27,6 +29,8 @@ export default function AboutUs() {
           address: data.about_company.address || '',
           imageUrl: data.about_company.imageUrl || '',
           mapEmbed: data.about_company.mapEmbed || '',
+          schedule: data.about_company.schedule || '',
+          scheduleSaturday: data.about_company.scheduleSaturday || '',
           gallery: data.about_company.gallery || []
         });
       }
@@ -173,8 +177,8 @@ export default function AboutUs() {
                 
                 <div className="bg-gray-50 p-6 rounded-2xl border border-gray-200">
                   <h4 className="font-bold text-gray-900 mb-2">Horario de Atención</h4>
-                  <p className="text-sm text-gray-600">Lunes a Viernes: 8:00 AM - 6:00 PM</p>
-                  <p className="text-sm text-gray-600">Sábados: 9:00 AM - 1:00 PM</p>
+                  <p className="text-sm text-gray-600">Lunes a Viernes: {about.schedule || '8:00 AM - 6:00 PM'}</p>
+                  <p className="text-sm text-gray-600">Sábados: {about.scheduleSaturday || '9:00 AM - 1:00 PM'}</p>
                 </div>
               </motion.div>
 

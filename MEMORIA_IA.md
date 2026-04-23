@@ -77,3 +77,21 @@
   1. Monitorear el uso del portal con clientes reales.
   2. Implementar notificaciones push si el presupuesto lo permite.
   3. Optimizar el carrusel de categorías para móviles con menor ancho.
+## 📅 Bitácora de Trabajo - [2026-04-23]
+
+### 1. Resumen de Actividades
+- **Horario Dinámico de Atención:** Se eliminó el texto estático del horario en la página "Quiénes Somos" para convertirlo en una funcionalidad autogestionable.
+- **Configuración Master (Institucional):** Se añadieron dos nuevos campos en la pestaña "Institucional" del Panel Admin: "Horario Lunes a Viernes" y "Horario Sábados".
+- **Persistencia en Settings:** Los nuevos campos se integraron en el objeto `about_company` dentro de la tabla `settings`, manteniendo la coherencia con el modelo de datos existente.
+- **Renderizado Adaptativo:** El componente `AboutUs.jsx` ahora consume estos datos en tiempo real. Se implementaron valores por defecto (fallbacks) para asegurar que el portal nunca se vea vacío si el administrador no ha configurado el horario todavía.
+
+### 2. Conocimientos y Lógicas Aplicadas
+- **Extensibilidad de Objetos JSONB:** Se aprovechó la flexibilidad del campo `about_company` para añadir metadatos sin necesidad de alterar la estructura física de las tablas en Supabase.
+- **Dinamismo Gradual:** Se mantuvo la estructura visual existente, envolviendo los datos dinámicos en la UI ya validada por el cliente.
+
+### 3. Errores y Soluciones
+- **Manejo de Nulos:** Se identificó que si el objeto `about_company` era parcial en la base de datos, podía causar errores de renderizado. Se aplicó encadenamiento opcional (`about_company?.schedule`) y valores predeterminados.
+
+### 4. Estado Actual y Próximos Pasos
+- **Estado:** Funcionalidad de horario dinámico completada y lista para despliegue.
+- **Próximos Pasos:** Verificar si otras secciones (como el Footer) requieren también mostrar el horario de forma dinámica.

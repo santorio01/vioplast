@@ -1013,6 +1013,29 @@ export default function AdminDashboard() {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
+                        <label className="block text-sm font-bold text-gray-700 mb-1">Horario Lunes a Viernes</label>
+                        <input
+                          type="text"
+                          value={settings.about_company?.schedule || ''}
+                          onChange={(e) => setSettings({...settings, about_company: {...settings.about_company, schedule: e.target.value}})}
+                          className="w-full border rounded-lg p-3 bg-gray-50 outline-none focus:ring-2 focus:ring-[#4608C2]"
+                          placeholder="Ej: 8:00 AM - 6:00 PM"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-bold text-gray-700 mb-1">Horario Sábados</label>
+                        <input
+                          type="text"
+                          value={settings.about_company?.scheduleSaturday || ''}
+                          onChange={(e) => setSettings({...settings, about_company: {...settings.about_company, scheduleSaturday: e.target.value}})}
+                          className="w-full border rounded-lg p-3 bg-gray-50 outline-none focus:ring-2 focus:ring-[#4608C2]"
+                          placeholder="Ej: 9:00 AM - 1:00 PM"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
                         <label className="block text-sm font-bold text-gray-700 mb-1">Dirección Física</label>
                         <input
                           type="text"
