@@ -18,8 +18,12 @@ import {
 
 export default function Home() {
   const [client, setClient] = useState(() => {
-    const data = localStorage.getItem('vioplast_client');
-    return data ? JSON.parse(data) : null;
+    try {
+      const data = localStorage.getItem('vioplast_client');
+      return data ? JSON.parse(data) : null;
+    } catch (e) {
+      return null;
+    }
   });
   const { cart, addToCart, totalPrice, clearCart, removeFromCart } = useCart();
   
@@ -142,8 +146,8 @@ export default function Home() {
 
   const filteredProducts = products.filter(p => {
     const matchesCategory = selectedCategory === 'Todos' || p.category === selectedCategory;
-    const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          (p.subtitle && p.subtitle.toLowerCase().includes(searchTerm.toLowerCase()));
+    const matchesSearch = (p.name || '').toLowerCase().includes(searchTerm.toLowerCase()) || 
+                          (p.subtitle || '').toLowerCase().includes(searchTerm.toLowerCase());
     return matchesCategory && matchesSearch;
   });
 
@@ -211,7 +215,7 @@ export default function Home() {
                   <div className="pt-6 border-t mt-4">
                     <div className="flex justify-between items-center mb-4">
                       <span className="text-sm font-bold text-gray-500 uppercase tracking-widest">Total Parcial:</span>
-                      <span className="text-2xl font-black text-[#4608C2]">${totalPrice.toLocaleString()}</span>
+                      <span className="text-2xl font-black text-[#4608C2]">${(totalPrice || 0).toLocaleString()}</span>
                     </div>
                     <button 
                       onClick={() => document.querySelector('[class*="bottom-6 right-6"]').click()} // Abre el sidebar para finalizar
@@ -549,7 +553,7 @@ export default function Home() {
                     )}
                   </Link>
                   <div className="mt-auto pt-4 flex justify-between items-center">
-                    <span className="text-[#4608C2] font-bold text-xl">${Number(product.price).toLocaleString()}</span>
+                    <span className="text-[#4608C2] font-bold text-xl">${(Number(product.price) || 0).toLocaleString()}</span>
                     
                     <button 
                       onClick={() => addToCart(product)}

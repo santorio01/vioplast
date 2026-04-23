@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { PackageSearch, UserCircle, ShoppingCart, LayoutDashboard } from 'lucide-react';
 import { useCart } from '../../lib/CartContext';
@@ -10,6 +10,8 @@ export default function Navbar() {
   // Usamos un estado para asegurar reactividad tras el montaje (evita fallos de hidratación/persistencias)
   const [isAdmin, setIsAdmin] = useState(false);
   const [client, setClient] = useState(null);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const profileRef = useRef(null);
 
   useEffect(() => {
     const syncStatus = () => {
@@ -21,9 +23,16 @@ export default function Navbar() {
     };
 
     syncStatus();
+    const handleClickOutside = (event) => {
+      if (profileRef.current && !profileRef.current.contains(event.target)) {
+        setIsProfileOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
     window.addEventListener('storage', syncStatus);
     window.addEventListener('vioplast_session_change', syncStatus);
     return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
       window.removeEventListener('storage', syncStatus);
       window.removeEventListener('vioplast_session_change', syncStatus);
     };
@@ -34,6 +43,7 @@ export default function Navbar() {
     localStorage.removeItem('vioplast_admin');
     setIsAdmin(false);
     setClient(null);
+    setIsProfileOpen(false);
     navigate('/login');
   };
 
@@ -82,12 +92,16 @@ export default function Navbar() {
 
             {/* Profile Dropdown */}
             {(client || isAdmin) ? (
-              <div className="group relative flex items-center gap-2 cursor-pointer p-1.5 sm:p-2 rounded-xl hover:bg-purple-50 transition">
-                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-purple-100 flex items-center justify-center border-2 border-transparent group-hover:border-purple-200 transition-all overflow-hidden">
+              <div 
+                ref={profileRef}
+                onClick={() => setIsProfileOpen(!isProfileOpen)}
+                className="relative flex items-center gap-2 cursor-pointer p-1.5 sm:p-2 rounded-xl hover:bg-purple-50 transition"
+              >
+                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-purple-100 flex items-center justify-center border-2 border-transparent hover:border-purple-200 transition-all overflow-hidden">
                   {isAdmin ? <UserCircle className="h-6 w-6 text-purple-600" /> : <img src={`https://ui-avatars.com/api/?name=${client.name}&background=4608C2&color=fff`} className="w-full h-full" alt="User" />}
                 </div>
                 
-                <div className="absolute top-full right-0 mt-3 w-56 bg-white rounded-2xl shadow-2xl border border-purple-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all transform origin-top-right group-hover:translate-y-0 translate-y-2 overflow-hidden z-[60]">
+                <div className={`absolute top-full right-0 mt-3 w-56 bg-white rounded-2xl shadow-2xl border border-purple-50 transition-all transform origin-top-right overflow-hidden z-[60] ${isProfileOpen ? 'opacity-100 visible translate-y-0' : 'opacity-0 invisible translate-y-2'}`}>
                   <div className="p-4 border-b bg-purple-50/50">
                     <p className="font-black text-[#4608C2] text-sm uppercase truncate">{isAdmin ? 'ADMINISTRADOR' : client.name}</p>
                     <p className="text-gray-500 text-[10px] font-bold tracking-widest uppercase mt-0.5">{isAdmin ? 'Control del Sistema' : 'Historial de Compras'}</p>

@@ -15,7 +15,13 @@ export default function CartSidebar() {
   
   // Client Data State
   const clientData = localStorage.getItem('vioplast_client');
-  const initialClient = clientData ? JSON.parse(clientData) : null;
+  const initialClient = (() => {
+    try {
+      return clientData ? JSON.parse(clientData) : null;
+    } catch (e) {
+      return null;
+    }
+  })();
   
   const [clientForm, setClientForm] = useState({
     name: initialClient?.name || '',
@@ -80,7 +86,20 @@ export default function CartSidebar() {
     setLoading(true);
     let orderId = 'Pedido Local';
 
-    const currentClient = JSON.parse(localStorage.getItem('vioplast_client'));
+    const storedClient = localStorage.getItem('vioplast_client');
+    let currentClient = null;
+    try {
+      currentClient = storedClient ? JSON.parse(storedClient) : null;
+    } catch (e) {
+      console.error('Error parsing client data:', e);
+    }
+
+    if (!currentClient) {
+        alert("Por favor ingresa tus datos en el Paso 2 antes de finalizar.");
+        setStep(2);
+        setLoading(false);
+        return;
+    }
 
     try {
       // Guardar pedido
@@ -111,7 +130,7 @@ export default function CartSidebar() {
       cart.forEach((item, i) => {
         msg += `${i+1}. ${item.name} (x${item.quantity}) - $${(item.price * item.quantity).toLocaleString()}%0A`;
       });
-      msg += `%0A*TOTAL: $${totalPrice.toLocaleString()}*%0A`;
+      msg += `%0A*TOTAL: $${(totalPrice || 0).toLocaleString()}*%0A`;
       if (customRequest) msg += `%0A*Solicitud:* ${customRequest}%0A`;
 
       const waUrl = `https://wa.me/${storePhone}?text=${msg}`;
@@ -204,7 +223,7 @@ export default function CartSidebar() {
               <div className="p-6 border-t bg-gray-50">
                 <div className="flex justify-between items-center mb-4">
                   <span className="text-gray-600 font-medium">Total a Pagar</span>
-                  <span className="text-2xl font-bold text-[#4608C2]">${totalPrice.toLocaleString()}</span>
+                  <span className="text-2xl font-bold text-[#4608C2]">${(totalPrice || 0).toLocaleString()}</span>
                 </div>
                 <button onClick={proceedToData} className="w-full bg-[#00e676] hover:bg-[#00c853] text-black font-bold py-4 rounded-xl shadow-lg transition-transform hover:-translate-y-1 flex items-center justify-center gap-2">
                   Continuar al Check-Out
@@ -265,7 +284,7 @@ export default function CartSidebar() {
             </div>
 
             <div className="mt-auto space-y-3 pt-6 border-t border-gray-100">
-              <h4 className="font-bold text-center text-gray-800 mb-2">Finalizar Pedido (Total: ${totalPrice.toLocaleString()})</h4>
+              <h4 className="font-bold text-center text-gray-800 mb-2">Finalizar Pedido (Total: ${(totalPrice || 0).toLocaleString()})</h4>
               
               <button 
                 onClick={() => handleFinalCheckout(false)} 

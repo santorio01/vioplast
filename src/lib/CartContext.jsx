@@ -6,8 +6,13 @@ export const useCart = () => useContext(CartContext);
 
 export const CartProvider = ({ children }) => {
   const [cart, setCart] = useState(() => {
-    const saved = localStorage.getItem('vioplast_cart');
-    return saved ? JSON.parse(saved) : [];
+    try {
+      const saved = localStorage.getItem('vioplast_cart');
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      console.error('Error parsing cart:', e);
+      return [];
+    }
   });
 
   useEffect(() => {

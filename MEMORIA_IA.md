@@ -94,4 +94,25 @@
 
 ### 4. Estado Actual y Próximos Pasos
 - **Estado:** Funcionalidad de horario dinámico completada y lista para despliegue.
-- **Próximos Pasos:** Verificar si otras secciones (como el Footer) requieren también mostrar el horario de forma dinámica.
+
+## 📅 Bitácora de Trabajo - [2026-04-23] (Sesión 2)
+
+### 1. Resumen de Actividades
+- **Fix Menú de Salida (Mobile):** Se refactorizó el menú de perfil en el `Navbar` para que funcione mediante clics/toques en lugar de `hover`. Esto soluciona el problema donde los usuarios móviles no podían desplegar las opciones para cerrar sesión.
+- **Blindaje contra "Pantalla en Blanco":** Se implementó una serie de protecciones en todo el frontend para evitar cierres inesperados de la aplicación:
+  - **Manejo de Nulos en Búsqueda:** Se añadieron validaciones en el filtrado de productos (`Home.jsx`) para evitar errores al procesar nombres o subtítulos inexistentes.
+  - **Parsing Seguro de Storage:** Se creó una lógica de `try-catch` para la lectura de `localStorage` (`CartContext.jsx`, `CartSidebar.jsx`), evitando que datos corrompidos bloqueen el arranque de la app.
+  - **Validación en Checkout:** Se añadió una verificación crítica en `handleFinalCheckout` para asegurar que los datos del cliente existan antes de procesar el pedido en Supabase.
+- **Implementación de Error Boundary:** Se añadió un componente de límite de errores global en `App.jsx`. En caso de un fallo crítico, la aplicación mostrará un mensaje amigable y un botón de recarga en lugar de una pantalla blanca vacía.
+- **Robustez en Precios:** Se aplicó formato seguro (`toLocaleString`) con valores por defecto en componentes clave (`Home`, `ProductDetail`, `CartSidebar`).
+
+### 2. Conocimientos y Lógicas Aplicadas
+- **UI agnóstica al dispositivo:** El cambio de `hover` a `click` en menús críticos es fundamental para aplicaciones híbridas (desktop/mobile).
+- **Graceful Degradation:** El uso de Error Boundaries permite que el usuario tenga una salida elegante ante errores y mejora la percepción de estabilidad de la plataforma.
+
+### 3. Errores y Soluciones
+- **Error de Referencia en Final Checkout:** Se detectó que si un usuario con sesión antigua pero datos incompletos intentaba finalizar, la app fallaba al buscar `client_id`. Se solucionó forzando el retorno al paso de "Ingreso de Datos" si la sesión no es válida en el momento del pago.
+
+### 4. Estado Actual y Próximos Pasos
+- **Estado:** Plataforma estabilizada con protecciones contra errores de renderizado y mejoras importantes en la navegación móvil.
+- **Próximos Pasos:** Monitorear logs de errores (si se implementa Sentry o similar) y validar con el cliente si el flujo de "clic para desplegar" en el perfil es intuitivo.
