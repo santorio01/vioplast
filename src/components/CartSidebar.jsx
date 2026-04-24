@@ -73,9 +73,10 @@ export default function CartSidebar() {
   const handleSaveClientAndProceed = async (e) => {
     e.preventDefault();
     setLoading(true);
+    const cleanCedula = clientForm.cedula.trim();
     try {
       // Registrar o actualizar cliente
-      let { data: existingClient } = await supabase.from('clients').select('*').eq('cedula', clientForm.cedula).single();
+      let { data: existingClient } = await supabase.from('clients').select('*').eq('cedula', cleanCedula).single();
       
       let finalClient = null;
       if (existingClient) {
@@ -88,7 +89,10 @@ export default function CartSidebar() {
         finalClient = updated;
       } else {
         // Crear cliente nuevo
-        const { data: created } = await supabase.from('clients').insert([clientForm]).select().single();
+        const { data: created } = await supabase.from('clients').insert([{
+          ...clientForm,
+          cedula: cleanCedula
+        }]).select().single();
         finalClient = created;
       }
 

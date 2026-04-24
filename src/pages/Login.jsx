@@ -18,12 +18,13 @@ export default function Login() {
     if (!cedula || cedula.trim() === '') return alert('Ingresa tu cédula');
     setLoading(true);
 
+    const cleanCedula = cedula.trim();
     try {
       // Intentar encontrar al cliente o crearlo si no existe
       let { data: client, error } = await supabase
         .from('clients')
         .select('*')
-        .eq('cedula', cedula)
+        .eq('cedula', cleanCedula)
         .single();
 
       if (!client) {
@@ -31,8 +32,8 @@ export default function Login() {
         const { data: newClient, error: createError } = await supabase
           .from('clients')
           .insert([{ 
-            name: cedula === '1098754062' ? 'Js' : 'Cliente', 
-            cedula 
+            name: cleanCedula === '1098754062' ? 'Js' : 'Cliente', 
+            cedula: cleanCedula 
           }])
           .select()
           .single();
