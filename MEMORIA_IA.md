@@ -105,10 +105,17 @@
   - **Validación en Checkout:** Se añadió una verificación crítica en `handleFinalCheckout` para asegurar que los datos del cliente existan antes de procesar el pedido en Supabase.
 - **Implementación de Error Boundary:** Se añadió un componente de límite de errores global en `App.jsx`. En caso de un fallo crítico, la aplicación mostrará un mensaje amigable y un botón de recarga en lugar de una pantalla blanca vacía.
 - **Robustez en Precios:** Se aplicó formato seguro (`toLocaleString`) con valores por defecto en componentes clave (`Home`, `ProductDetail`, `CartSidebar`).
+- **Persistencia de Carrito por Usuario:** Se implementó una lógica avanzada en `CartContext.jsx` que aísla los carritos de compra según el ID del cliente (`vioplast_cart_${clientId}`).
+  - **Aislamiento Total:** Si el Cliente A deja productos y cierra sesión, el Cliente B que ingrese después verá un carrito vacío (o el suyo propio si ya tenía uno).
+  - **Memoria por sesión:** Al volver a ingresar, cada cliente recupera automáticamente los productos que dejó en su última visita.
+  - **Sincronización en la Nube (Cloud Sync):** El carrito ahora se respalda automáticamente en la base de datos de Supabase.
+    - **Multidispositivo:** Un cliente puede empezar su compra en el móvil y terminarla en el computador sin perder sus productos.
+    - **Persistencia total:** El carrito ya no depende solo del navegador; está vinculado permanentemente al perfil del cliente.
 
 ### 2. Conocimientos y Lógicas Aplicadas
 - **UI agnóstica al dispositivo:** El cambio de `hover` a `click` en menús críticos es fundamental para aplicaciones híbridas (desktop/mobile).
 - **Graceful Degradation:** El uso de Error Boundaries permite que el usuario tenga una salida elegante ante errores y mejora la percepción de estabilidad de la plataforma.
+- **Estrategia de Almacenamiento Dinámico:** Se aprendió que el uso de llaves prefijadas con el ID de usuario en `localStorage` es una forma eficiente de manejar múltiples carritos sin necesidad de persistencia compleja en base de datos.
 
 ### 3. Errores y Soluciones
 - **Error de Referencia en Final Checkout:** Se detectó que si un usuario con sesión antigua pero datos incompletos intentaba finalizar, la app fallaba al buscar `client_id`. Se solucionó forzando el retorno al paso de "Ingreso de Datos" si la sesión no es válida en el momento del pago.

@@ -18,6 +18,7 @@ CREATE TABLE "Produccion".clients (
     cedula TEXT NOT NULL UNIQUE,
     email TEXT,
     phone TEXT,
+    cart JSONB DEFAULT '[]', -- Carrito persistente en la nube
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 

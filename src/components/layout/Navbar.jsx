@@ -4,7 +4,7 @@ import { PackageSearch, UserCircle, ShoppingCart, LayoutDashboard } from 'lucide
 import { useCart } from '../../lib/CartContext';
 
 export default function Navbar() {
-  const { totalItems } = useCart();
+  const { totalItems, clearCart } = useCart();
   const navigate = useNavigate();
   
   // Usamos un estado para asegurar reactividad tras el montaje (evita fallos de hidratación/persistencias)

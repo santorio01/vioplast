@@ -2,8 +2,10 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { UserCircle, Store, ArrowLeft } from 'lucide-react';
+import { useCart } from '../lib/CartContext';
 
 export default function Login() {
+  const { clearCart } = useCart();
   const [view, setView] = useState('roles'); // roles, client, admin
   const [cedula, setCedula] = useState('');
   const [email, setEmail] = useState('');
