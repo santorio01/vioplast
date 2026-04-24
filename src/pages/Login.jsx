@@ -32,7 +32,6 @@ export default function Login() {
         const { data: newClient, error: createError } = await supabase
           .from('clients')
           .insert([{ 
-            name: cleanCedula === '1098754062' ? 'Js' : 'Cliente', 
             cedula: cleanCedula 
           }])
           .select()

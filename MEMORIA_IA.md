@@ -127,7 +127,9 @@
 
 ### 1. Resumen de Actividades
 - **Optimización de Cierre de Sesión Móvil:** Atendiendo la solicitud del usuario, se añadió un botón de cierre de sesión directo en el `Navbar` visible únicamente en dispositivos móviles (al lado del avatar). Esto elimina la fricción de tener que abrir el dropdown para salir del sistema.
-- **Personalización de Identidad (JS Initials):** Se ajustó la lógica de registro/login para el cliente con cédula `1098754062`. Ahora, al ingresar por primera vez, el sistema le asigna el nombre "Js", lo que genera automáticamente las iniciales "JS" en su avatar, cumpliendo con la expectativa visual del usuario.
+- **Traslado de Lógica al Backend (Seguridad):** Siguiendo la recomendación de seguridad del usuario, se eliminó toda la lógica de nombres "quemada" (hardcoded) en el frontend.
+  - **Postgres Trigger:** Se implementó una función y un trigger en la base de datos (`trg_handle_client_name`) que asigna automáticamente el nombre "Js" a la cédula específica y "Cliente" al resto de nuevos registros.
+  - **Frontend Limpio:** El archivo `Login.jsx` ahora solo envía la cédula, delegando la responsabilidad de la identidad a la base de datos.
 - **Sincronización Reactiva de Datos en Checkout:** Se implementó una mejora crítica en `CartSidebar.jsx` para que el formulario de compra se auto-complete instantáneamente si el usuario inicia sesión mientras navega. 
   - **Lógica "Solo si está logueado":** Los campos se mantienen vacíos por defecto y solo se llenan con la información del perfil si hay una sesión activa.
   - **Reactividad Global:** Se añadieron escuchadores de eventos (`vioplast_session_change`) para asegurar que el cambio de estado en el login se refleje en el componente del carrito sin necesidad de refrescar la página.

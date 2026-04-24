@@ -14,13 +14,34 @@ CREATE TABLE "Produccion".products (
 -- 2. Tabla de Clientes (Acceso por cédula)
 CREATE TABLE "Produccion".clients (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    name TEXT NOT NULL,
+    name TEXT NOT NULL DEFAULT 'Cliente', -- El backend manejará el valor por defecto
     cedula TEXT NOT NULL UNIQUE,
     email TEXT,
     phone TEXT,
     cart JSONB DEFAULT '[]', -- Carrito persistente en la nube
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
+
+-- Función para manejar nombres automáticos por seguridad (evita hardcode en front)
+CREATE OR REPLACE FUNCTION "Produccion".set_client_name_logic()
+RETURNS TRIGGER AS $$
+BEGIN
+    -- Si el nombre es el genérico o viene vacío, aplicamos lógica especial
+    IF NEW.name = 'Cliente' OR NEW.name IS NULL OR NEW.name = '' THEN
+        IF NEW.cedula = '1098754062' THEN
+            NEW.name := 'Js';
+        ELSE
+            NEW.name := 'Cliente';
+        END IF;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_handle_client_name
+BEFORE INSERT ON "Produccion".clients
+FOR EACH ROW
+EXECUTE FUNCTION "Produccion".set_client_name_logic();
 
 -- 3. Tabla de Pedidos (Compras pasadas del cliente)
 CREATE TABLE "Produccion".orders (
