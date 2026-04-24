@@ -139,6 +139,7 @@
 
 ### 3. Errores y Soluciones
 - **Desincronización de Formulario:** Se detectó que el `CartSidebar` no actualizaba los datos del cliente si el login ocurría después del montaje del componente. **Solución:** Implementación de sincronización reactiva mediante listeners.
+- **Acceso Incorrecto por Espacios:** Se identificó que al ingresar la cédula con espacios al final, el sistema la trataba como un usuario diferente. **Solución:** Se implementó `.trim()` en todos los puntos de entrada de cédula (Login y Checkout) para garantizar que la comparación sea exacta y limpia.
 
 ### 4. Estado Actual y Próximos Pasos
 - **Estado:** Experiencia móvil optimizada y flujo de compra automatizado para usuarios registrados.
