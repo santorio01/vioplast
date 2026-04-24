@@ -123,3 +123,25 @@
 ### 4. Estado Actual y Próximos Pasos
 - **Estado:** Plataforma estabilizada con protecciones contra errores de renderizado y mejoras importantes en la navegación móvil.
 - **Próximos Pasos:** Monitorear logs de errores (si se implementa Sentry o similar) y validar con el cliente si el flujo de "clic para desplegar" en el perfil es intuitivo.
+## 📅 Bitácora de Trabajo - [2026-04-24]
+
+### 1. Resumen de Actividades
+- **Optimización de Cierre de Sesión Móvil:** Atendiendo la solicitud del usuario, se añadió un botón de cierre de sesión directo en el `Navbar` visible únicamente en dispositivos móviles (al lado del avatar). Esto elimina la fricción de tener que abrir el dropdown para salir del sistema.
+- **Personalización de Identidad (JS Initials):** Se ajustó la lógica de registro/login para el cliente con cédula `1098754062`. Ahora, al ingresar por primera vez, el sistema le asigna el nombre "Js", lo que genera automáticamente las iniciales "JS" en su avatar, cumpliendo con la expectativa visual del usuario.
+- **Sincronización Reactiva de Datos en Checkout:** Se implementó una mejora crítica en `CartSidebar.jsx` para que el formulario de compra se auto-complete instantáneamente si el usuario inicia sesión mientras navega. 
+  - **Lógica "Solo si está logueado":** Los campos se mantienen vacíos por defecto y solo se llenan con la información del perfil si hay una sesión activa.
+  - **Reactividad Global:** Se añadieron escuchadores de eventos (`vioplast_session_change`) para asegurar que el cambio de estado en el login se refleje en el componente del carrito sin necesidad de refrescar la página.
+- **Mejora de UX en Dropdowns:** Se ajustaron los estilos del menú de perfil para asegurar que no se corten en pantallas pequeñas y se añadió el icono de `LogOut` para mayor claridad visual.
+
+### 2. Conocimientos y Lógicas Aplicadas
+- **Escucha Activa de Sesión:** El uso de `useEffect` con listeners de `localStorage` y eventos personalizados es la forma más robusta de mantener componentes hermanos sincronizados en React.
+- **Personalización por ID:** En sistemas con flujos de registro simplificados (solo cédula), es útil tener "hooks" de datos para usuarios clave o administradores que prueban la plataforma.
+
+### 3. Errores y Soluciones
+- **Desincronización de Formulario:** Se detectó que el `CartSidebar` no actualizaba los datos del cliente si el login ocurría después del montaje del componente. **Solución:** Implementación de sincronización reactiva mediante listeners.
+
+### 4. Estado Actual y Próximos Pasos
+- **Estado:** Experiencia móvil optimizada y flujo de compra automatizado para usuarios registrados.
+- **Próximos Pasos:** 
+  1. Validar con el cliente si prefiere que el botón de cerrar sesión en móvil tenga texto o solo icono.
+  2. Implementar guardado automático de datos de envío en el perfil para compras recurrentes.

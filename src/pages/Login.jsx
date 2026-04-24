@@ -30,7 +30,10 @@ export default function Login() {
         // Registrar cliente básico
         const { data: newClient, error: createError } = await supabase
           .from('clients')
-          .insert([{ name: 'Cliente', cedula }])
+          .insert([{ 
+            name: cedula === '1098754062' ? 'Js' : 'Cliente', 
+            cedula 
+          }])
           .select()
           .single();
         

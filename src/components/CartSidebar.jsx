@@ -32,6 +32,29 @@ export default function CartSidebar() {
 
   useEffect(() => {
     fetchSettings();
+    
+    // Sincronizar datos del cliente cuando cambia la sesión
+    const handleSync = () => {
+      const data = localStorage.getItem('vioplast_client');
+      if (data) {
+        const parsed = JSON.parse(data);
+        setClientForm({
+          name: parsed.name || '',
+          cedula: parsed.cedula || '',
+          email: parsed.email || '',
+          phone: parsed.phone || ''
+        });
+      } else {
+        setClientForm({ name: '', cedula: '', email: '', phone: '' });
+      }
+    };
+
+    window.addEventListener('vioplast_session_change', handleSync);
+    window.addEventListener('storage', handleSync);
+    return () => {
+      window.removeEventListener('vioplast_session_change', handleSync);
+      window.removeEventListener('storage', handleSync);
+    };
   }, []);
 
   const fetchSettings = async () => {

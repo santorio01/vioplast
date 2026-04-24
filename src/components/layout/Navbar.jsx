@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { PackageSearch, UserCircle, ShoppingCart, LayoutDashboard } from 'lucide-react';
+import { PackageSearch, UserCircle, ShoppingCart, LayoutDashboard, LogOut } from 'lucide-react';
 import { useCart } from '../../lib/CartContext';
 
 export default function Navbar() {
@@ -104,15 +104,15 @@ export default function Navbar() {
                 <div className={`absolute top-full right-0 mt-3 w-56 bg-white rounded-2xl shadow-2xl border border-purple-50 transition-all transform origin-top-right overflow-hidden z-[60] ${isProfileOpen ? 'opacity-100 visible translate-y-0' : 'opacity-0 invisible translate-y-2'}`}>
                   <div className="p-4 border-b bg-purple-50/50">
                     <p className="font-black text-[#4608C2] text-sm uppercase truncate">{isAdmin ? 'ADMINISTRADOR' : client.name}</p>
-                    <p className="text-gray-500 text-[10px] font-bold tracking-widest uppercase mt-0.5">{isAdmin ? 'Control del Sistema' : 'Historial de Compras'}</p>
+                    <p className="text-gray-500 text-[10px] font-bold tracking-widest uppercase mt-0.5">{isAdmin ? 'Control del Sistema' : 'Portal de Cliente'}</p>
                   </div>
                   {isAdmin && (
                     <Link to="/admin" className="flex items-center gap-3 p-4 hover:bg-purple-50 text-xs font-black text-gray-700 transition">
                       <LayoutDashboard size={16} className="text-purple-600" /> GESTIONAR TIENDA
                     </Link>
                   )}
-                  <button onClick={handleLogout} className="w-full text-left p-4 hover:bg-red-50 text-red-600 text-xs font-black transition border-t border-purple-50">
-                    CERRAR SESIÓN
+                  <button onClick={handleLogout} className="w-full text-left p-4 hover:bg-red-50 text-red-600 text-xs font-black transition border-t border-purple-50 flex items-center gap-2">
+                    <LogOut size={16} /> CERRAR SESIÓN
                   </button>
                 </div>
               </div>
@@ -120,6 +120,17 @@ export default function Navbar() {
               <Link to="/login" className="flex items-center gap-2 bg-[#00e676] hover:bg-[#00c867] text-white px-4 sm:px-6 py-2 sm:py-2.5 rounded-full text-xs sm:text-sm font-black shadow-lg shadow-green-200 transition-all hover:-translate-y-0.5 active:translate-y-0 border border-green-300">
                 <UserCircle className="h-4 w-4" /> <span>ENTRAR</span>
               </Link>
+            )}
+
+            {/* Logout Rápido para Móvil - Solicitado por el usuario */}
+            {(client || isAdmin) && (
+              <button 
+                onClick={handleLogout}
+                className="lg:hidden p-2.5 text-red-500 hover:bg-red-50 rounded-xl transition-all active:scale-95"
+                title="Cerrar sesión"
+              >
+                <LogOut size={22} />
+              </button>
             )}
 
           </div>
