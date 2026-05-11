@@ -1,54 +1,41 @@
 import React, { useState, useEffect } from 'react';
 import { useCart } from '../lib/CartContext';
-import { ShoppingCart, X, Trash2, Edit3, MessageCircle, ArrowLeft, Send } from 'lucide-react';
+import { ShoppingCart, X, Trash2, Edit3, MessageCircle, Send } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 export default function CartSidebar() {
   const [isOpen, setIsOpen] = useState(false);
   const { cart, removeFromCart, totalItems, totalPrice, clearCart } = useCart();
   
-  const [step, setStep] = useState(1); // 1: Cart, 2: Client Data, 3: Payment
   const [customRequest, setCustomRequest] = useState('');
   const [loading, setLoading] = useState(false);
-  
   const [settings, setSettings] = useState(null);
   
   // Client Data State
-  const clientData = localStorage.getItem('vioplast_client');
-  const initialClient = (() => {
-    try {
-      return clientData ? JSON.parse(clientData) : null;
-    } catch (e) {
-      return null;
-    }
-  })();
-  
   const [clientForm, setClientForm] = useState({
-    name: initialClient?.name || '',
-    cedula: initialClient?.cedula || '',
-    email: initialClient?.email || '',
-    phone: initialClient?.phone || ''
+    name: '',
+    cedula: '',
+    email: '',
+    phone: ''
   });
 
   useEffect(() => {
     fetchSettings();
-    
-    // Sincronizar datos del cliente cuando cambia la sesión
     const handleSync = () => {
       const data = localStorage.getItem('vioplast_client');
       if (data) {
-        const parsed = JSON.parse(data);
-        setClientForm({
-          name: parsed.name || '',
-          cedula: parsed.cedula || '',
-          email: parsed.email || '',
-          phone: parsed.phone || ''
-        });
-      } else {
-        setClientForm({ name: '', cedula: '', email: '', phone: '' });
+        try {
+          const parsed = JSON.parse(data);
+          setClientForm({
+            name: parsed.name || '',
+            cedula: parsed.cedula || '',
+            email: parsed.email || '',
+            phone: parsed.phone || ''
+          });
+        } catch (e) {}
       }
     };
-
+    handleSync();
     window.addEventListener('vioplast_session_change', handleSync);
     window.addEventListener('storage', handleSync);
     return () => {
@@ -57,11 +44,10 @@ export default function CartSidebar() {
     };
   }, []);
 
-  // Resetear el paso al cerrar el sidebar para evitar "caché visual"
+  // Resetear estado al cerrar
   useEffect(() => {
     if (!isOpen) {
-      const timer = setTimeout(() => setStep(1), 300); // Esperar a que termine la animación de cierre
-      return () => clearTimeout(timer);
+      setLoading(false);
     }
   }, [isOpen]);
 
@@ -69,21 +55,19 @@ export default function CartSidebar() {
     try {
       const { data } = await supabase.from('settings').select('*').limit(1).single();
       if (data) setSettings(data);
-    } catch (error) {
-      console.error('Error fetching settings:', error);
-    }
+    } catch (error) {}
   };
 
-  const proceedToData = () => {
-    setStep(2);
-  };
-
-  const handleSaveClientAndProceed = async (e) => {
-    e.preventDefault();
+  const handleFinalCheckout = async (e) => {
+    if (e) e.preventDefault();
+    if (cart.length === 0) return;
+    
     setLoading(true);
     const cleanCedula = clientForm.cedula.trim();
+
     try {
-      const { data, error } = await supabase
+      // 1. Guardar/Actualizar Cliente (Upsert)
+      const { data: clientData, error: clientErr } = await supabase
         .from('clients')
         .upsert({
           cedula: cleanCedula,
@@ -94,65 +78,34 @@ export default function CartSidebar() {
         .select()
         .single();
 
-      if (error) throw error;
-      if (!data) throw new Error("No data returned");
-
-      localStorage.setItem('vioplast_client', JSON.stringify(data));
-      window.dispatchEvent(new Event('vioplast_session_change'));
+      if (clientErr || !clientData) throw new Error("Error con el cliente");
       
-      // En lugar de ir a un paso 3, disparamos el checkout final inmediatamente
-      await handleFinalCheckout(false); 
-    } catch (error) {
-      console.error('Error saving client:', error);
-      alert('Error guardando tus datos. Por favor verifica la información.');
-      setLoading(false);
-    }
-  };
+      localStorage.setItem('vioplast_client', JSON.stringify(clientData));
+      window.dispatchEvent(new Event('vioplast_session_change'));
 
-  const handleFinalCheckout = async (paymentProof) => {
-    if (cart.length === 0) return;
-    setLoading(true);
-    let orderId = 'Pedido Local';
-
-    const storedClient = localStorage.getItem('vioplast_client');
-    let currentClient = null;
-    try {
-      currentClient = storedClient ? JSON.parse(storedClient) : null;
-    } catch (e) {
-      console.error('Error parsing client data:', e);
-    }
-
-    if (!currentClient) {
-        alert("Por favor ingresa tus datos en el Paso 2 antes de finalizar.");
-        setStep(2);
-        setLoading(false);
-        return;
-    }
-
-    try {
-      // Guardar pedido
-      const { data, error } = await supabase.from('orders').insert([{
-        client_id: currentClient.id,
+      // 2. Guardar Pedido
+      const { data: orderData, error: orderErr } = await supabase.from('orders').insert([{
+        client_id: clientData.id,
         total: totalPrice,
         items: cart,
         status: 'pending'
       }]).select('id').single();
       
-      if (!error && data?.id) orderId = String(data.id).substring(0, 8);
+      let orderId = orderData?.id ? String(orderData.id).substring(0, 8) : 'PROCESANDO';
 
-      // Solicitud especial
+      // 3. Solicitud especial
       if (customRequest) {
         await supabase.from('custom_requests').insert([{
-          client_cedula: currentClient.cedula,
+          client_cedula: clientData.cedula,
           description: customRequest
         }]);
       }
 
-      // WhatsApp URL gen
+      // 4. WhatsApp URL
       const storePhone = settings?.store_whatsapp || '573000000000';
-      let msg = `Hola Vioplast! ${paymentProof ? 'Adjuntaré mi comprobante de pago para mi pedido.' : 'Quiero realizar este pedido para pagar después.'}%0A%0A`;
+      let msg = `Hola Vioplast! Quiero realizar este pedido.%0A%0A`;
       msg += `*ID Pedido:* ${orderId}%0A`;
-      msg += `*Cédula:* ${currentClient.cedula} - *Cliente:* ${currentClient.name}%0A%0A`;
+      msg += `*Cédula:* ${clientData.cedula} - *Cliente:* ${clientData.name}%0A%0A`;
       
       msg += `*PRODUCTOS:*%0A`;
       cart.forEach((item, i) => {
@@ -163,20 +116,16 @@ export default function CartSidebar() {
 
       const waUrl = `https://wa.me/${storePhone}?text=${msg}`;
       
-      // Limpieza agresiva de estado
       clearCart();
-      setStep(1);
       setIsOpen(false);
-
-      // En móviles, window.open puede ser bloqueado si ocurre tras un await largo.
-      // Usamos una redirección directa o intentamos abrir.
+      
       setTimeout(() => {
         window.location.href = waUrl;
       }, 100);
 
     } catch (error) {
-      alert("Hubo un error asimilando tu pedido.");
-    } finally {
+      console.error(error);
+      alert("Hubo un error procesando tu solicitud. Por favor intenta de nuevo.");
       setLoading(false);
     }
   };
@@ -202,113 +151,110 @@ export default function CartSidebar() {
       <div className={`fixed top-0 right-0 h-full w-full sm:w-[450px] bg-white shadow-2xl z-50 transform transition-transform duration-300 flex flex-col ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}>
         
         {/* HEADER */}
-        <div className="p-6 bg-[#4608C2] text-white flex justify-between items-center shadow-md">
-          <h2 className="text-xl font-bold flex items-center gap-2">
-            {step > 1 && <button onClick={() => setStep(step - 1)} className="hover:bg-[#6225e6] p-1 rounded-full"><ArrowLeft size={20}/></button>}
-            {step === 1 ? 'Tu Pedido' : 'Confirmar Datos'}
+        <div className="p-6 bg-[#4608C2] text-white flex justify-between items-center shadow-md shrink-0">
+          <h2 className="text-xl font-bold flex items-center gap-2 uppercase tracking-tighter">
+            <ShoppingCart size={22} /> Tu Pedido
           </h2>
           <button onClick={() => setIsOpen(false)} className="hover:bg-[#6225e6] p-1 rounded-full transition">
             <X size={24} />
           </button>
         </div>
 
-        {/* STEP 1: CARRITO */}
-        {step === 1 && (
-          <>
-            <div className="flex-grow overflow-y-auto p-6 flex flex-col gap-4">
-              {cart.length === 0 ? (
-                <div className="text-center text-gray-500 my-auto">
-                  <ShoppingCart size={48} className="mx-auto mb-4 opacity-20" />
-                  <p>Tu carrito está vacío.</p>
-                </div>
-              ) : (
-                cart.map(item => (
-                  <div key={item.id} className="flex gap-4 items-center bg-gray-50 border p-3 rounded-xl shadow-sm">
-                    <img src={item.images?.[0] || 'https://placehold.co/100x100'} className="w-16 h-16 rounded object-cover" alt="" />
-                    <div className="flex-grow">
-                      <h4 className="font-bold text-gray-800 text-sm leading-tight line-clamp-2">{item.name}</h4>
-                      <p className="text-gray-500 text-xs mt-1">Ctd: {item.quantity}</p>
-                      <p className="text-[#4608C2] font-bold text-sm mt-1">${(item.price * item.quantity).toLocaleString()}</p>
-                    </div>
-                    <button onClick={() => removeFromCart(item.id)} className="text-red-500 hover:bg-red-100 p-2 rounded-lg transition">
-                      <Trash2 size={18} />
-                    </button>
+        {cart.length === 0 ? (
+          <div className="flex-grow flex flex-col items-center justify-center p-10 text-gray-400">
+            <ShoppingCart size={64} className="opacity-10 mb-4" />
+            <p className="font-bold uppercase text-xs tracking-widest text-center">Tu carrito está vacío</p>
+            <button onClick={() => setIsOpen(false)} className="mt-6 text-[#4608C2] font-black uppercase text-[10px] tracking-widest hover:underline">Volver a la tienda</button>
+          </div>
+        ) : (
+          <form onSubmit={handleFinalCheckout} className="flex-grow flex flex-col overflow-hidden">
+            {/* LISTA DE PRODUCTOS (Scrollable) */}
+            <div className="p-4 space-y-3 overflow-y-auto max-h-[35vh] bg-gray-50 border-b custom-scrollbar">
+               {cart.map(item => (
+                <div key={item.id} className="flex gap-3 items-center bg-white p-3 rounded-2xl border border-gray-100 shadow-sm group">
+                  <img src={item.images?.[0] || 'https://placehold.co/100x100'} className="w-12 h-12 rounded-xl object-cover" alt="" />
+                  <div className="flex-grow">
+                    <h4 className="font-black text-gray-800 text-[10px] uppercase leading-tight line-clamp-1">{item.name}</h4>
+                    <p className="text-[#4608C2] font-bold text-[10px] mt-0.5">${(item.price * item.quantity).toLocaleString()} <span className="text-gray-400 font-medium">x{item.quantity}</span></p>
                   </div>
-                ))
-              )}
-
-              {cart.length > 0 && (
-                <div className="mt-4 pt-4 border-t">
-                  <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
-                    <Edit3 size={16} /> Solicitud Especial (Opcional)
-                  </label>
-                  <textarea 
-                    rows="2" 
-                    placeholder="Ejemplo: Necesito bolsas de otro color." 
-                    value={customRequest}
-                    onChange={e => setCustomRequest(e.target.value)}
-                    className="w-full border rounded-lg p-3 text-sm focus:ring-[#4608C2] outline-none bg-gray-50"
-                  />
+                  <button type="button" onClick={() => removeFromCart(item.id)} className="text-red-400 hover:text-red-600 p-1 transition">
+                    <Trash2 size={16} />
+                  </button>
                 </div>
-              )}
+              ))}
+
+              <div className="pt-2">
+                <div className="flex items-center gap-2 text-[10px] font-black text-gray-400 mb-2 uppercase tracking-widest">
+                  <Edit3 size={14} /> Solicitud Especial
+                </div>
+                <textarea 
+                  rows="1" 
+                  placeholder="Instrucciones adicionales..." 
+                  value={customRequest}
+                  onChange={e => setCustomRequest(e.target.value)}
+                  className="w-full border rounded-xl p-3 text-xs outline-none bg-white focus:ring-1 focus:ring-[#4608C2]/30"
+                />
+              </div>
             </div>
-            
-            {cart.length > 0 && (
-              <div className="p-6 border-t bg-gray-50">
-                <div className="flex justify-between items-center mb-4">
-                  <span className="text-gray-600 font-medium">Total a Pagar</span>
-                  <span className="text-2xl font-bold text-[#4608C2]">${(totalPrice || 0).toLocaleString()}</span>
-                </div>
-                <button onClick={proceedToData} className="w-full bg-[#00e676] hover:bg-[#00c853] text-black font-bold py-4 rounded-xl shadow-lg transition-transform hover:-translate-y-1 flex items-center justify-center gap-2">
-                  Continuar al Check-Out
-                </button>
-              </div>
-            )}
-          </>
-        )}
 
-        {/* STEP 2: DATOS DEL CLIENTE */}
-        {step === 2 && (
-          <form onSubmit={handleSaveClientAndProceed} className="flex-grow flex flex-col p-6 animate-fade-in overflow-y-auto">
-            <h3 className="text-lg font-bold text-gray-800 mb-4">Información de Envío</h3>
-            <div className="space-y-4 mb-6">
-              <div>
-                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Cédula / NIT</label>
-                <input required type="text" value={clientForm.cedula} onChange={e => setClientForm({...clientForm, cedula: e.target.value})} className="w-full border rounded-xl p-3 bg-gray-50 outline-none focus:border-[#4608C2] font-bold" />
-              </div>
-              <div>
-                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Nombre Completo</label>
-                <input required type="text" value={clientForm.name} onChange={e => setClientForm({...clientForm, name: e.target.value})} className="w-full border rounded-xl p-3 bg-gray-50 outline-none focus:border-[#4608C2] font-bold" />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
+            {/* FORMULARIO DE DATOS */}
+            <div className="flex-grow overflow-y-auto p-6 space-y-4">
+              <h3 className="text-xs font-black text-gray-800 uppercase tracking-widest border-b pb-2 flex items-center gap-2">
+                <MessageCircle size={16} className="text-[#00e676]" /> Datos de Contacto y Envío
+              </h3>
+              
+              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Email</label>
-                  <input required type="email" value={clientForm.email} onChange={e => setClientForm({...clientForm, email: e.target.value})} className="w-full border rounded-xl p-3 bg-gray-50 outline-none focus:border-[#4608C2] text-xs font-bold" />
+                  <label className="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Cédula / NIT *</label>
+                  <input required type="text" value={clientForm.cedula} onChange={e => setClientForm({...clientForm, cedula: e.target.value})} className="w-full border rounded-xl p-3 bg-gray-50 outline-none focus:border-[#4608C2] font-bold text-xs" />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Celular</label>
-                  <input required type="text" value={clientForm.phone} onChange={e => setClientForm({...clientForm, phone: e.target.value})} className="w-full border rounded-xl p-3 bg-gray-50 outline-none focus:border-[#4608C2] font-bold" />
+                  <label className="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Celular *</label>
+                  <input required type="text" value={clientForm.phone} onChange={e => setClientForm({...clientForm, phone: e.target.value})} className="w-full border rounded-xl p-3 bg-gray-50 outline-none focus:border-[#4608C2] font-bold text-xs" />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Nombre Completo *</label>
+                <input required type="text" value={clientForm.name} onChange={e => setClientForm({...clientForm, name: e.target.value})} className="w-full border rounded-xl p-3 bg-gray-50 outline-none focus:border-[#4608C2] font-bold text-xs" />
+              </div>
+
+              <div>
+                <label className="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Email (Opcional)</label>
+                <input type="email" value={clientForm.email} onChange={e => setClientForm({...clientForm, email: e.target.value})} className="w-full border rounded-xl p-3 bg-gray-50 outline-none focus:border-[#4608C2] font-bold text-xs" />
+              </div>
+
+              <div className="bg-purple-50 p-4 rounded-2xl border border-purple-100">
+                <h4 className="text-[9px] font-black text-[#4608C2] uppercase mb-2">Medios de Pago:</h4>
+                <div className="flex flex-wrap gap-2">
+                  {settings?.payment_methods?.map((pm, i) => (
+                    <span key={i} className="bg-white px-2 py-1 rounded-lg text-[8px] font-black border border-purple-100">{pm.type}</span>
+                  )) || <span className="text-[8px] font-bold text-gray-500 italic">Consultar por WhatsApp</span>}
                 </div>
               </div>
             </div>
 
-            {/* Medios de Pago resumidos para agilizar */}
-            <div className="bg-purple-50 p-4 rounded-2xl border border-purple-100 mb-6">
-              <h4 className="text-[10px] font-black text-[#4608C2] uppercase mb-2">Medios de Pago Disponibles:</h4>
-              <div className="flex flex-wrap gap-2">
-                {settings?.payment_methods?.map((pm, i) => (
-                  <span key={i} className="bg-white px-2 py-1 rounded-lg text-[9px] font-black border border-purple-100">{pm.type}</span>
-                )) || <span className="text-[9px] font-bold text-gray-500 italic">Consultar por WhatsApp</span>}
+            {/* FOOTER FIJO CON BOTÓN */}
+            <div className="p-6 bg-gray-50 border-t shrink-0">
+              <div className="flex justify-between items-end mb-4">
+                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Total a Pagar:</span>
+                <span className="text-3xl font-black text-[#4608C2] leading-none">${(totalPrice || 0).toLocaleString()}</span>
               </div>
+              <button 
+                type="submit" 
+                disabled={loading} 
+                className="w-full bg-[#00e676] text-black font-black py-5 rounded-2xl shadow-xl hover:shadow-[#00e676]/30 transition-all flex items-center justify-center gap-3 uppercase text-sm tracking-widest"
+              >
+                {loading ? (
+                   <div className="animate-spin rounded-full h-5 w-5 border-2 border-black border-t-transparent"></div>
+                ) : (
+                  <><Send size={20} /> Finalizar Pedido por WhatsApp</>
+                )}
+              </button>
+              <p className="text-[8px] text-center text-gray-400 mt-4 font-bold uppercase tracking-widest">Al finalizar se enviará un resumen detallado a nuestro asesor</p>
             </div>
-            
-            <button type="submit" disabled={loading} className="w-full mt-auto bg-[#00e676] text-black font-black py-4 rounded-2xl shadow-lg hover:shadow-[#00e676]/20 transition-all flex items-center justify-center gap-2 uppercase text-xs tracking-widest">
-              {loading ? 'Procesando...' : <><MessageCircle size={18} /> Finalizar y Enviar a WhatsApp</>}
-            </button>
-            <p className="text-[9px] text-center text-gray-400 mt-3 font-bold uppercase tracking-tighter italic">Se abrirá WhatsApp para confirmar tu pedido con un asesor</p>
           </form>
         )}
-
       </div>
     </>
   );
