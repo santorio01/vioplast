@@ -171,6 +171,7 @@
 - **Unificación Total (Checkout de 1 Solo Paso):** Se eliminó por completo el flujo secuencial de pasos. Ahora, al abrir el carrito, el usuario ve su lista de productos y el formulario de contacto en una sola pantalla.
   - El botón final procesa el registro de cliente, crea el pedido y abre WhatsApp en una sola acción atómica.
   - Se optimizó el scroll para que el formulario sea visible inmediatamente después de la lista de productos.
+- **Apertura en Nueva Pestaña:** Se configuró WhatsApp para abrirse en una pestaña nueva (`window.open`), manteniendo la página de Vioplast abierta para el usuario, facilitando que sigan navegando si lo desean.
 - **Solución de "Caché Visual" en Móviles:** Se implementó un reseteo forzado del estado del sidebar al cerrarse. Ahora, tras una compra exitosa, el carrito se limpia instantáneamente y el sidebar se cierra, redirigiendo al usuario a WhatsApp de forma fluida.
 - **Corrección de Errores Silenciosos (HTTP 400):** Se detectó que algunas sesiones antiguas intentaban consultar pedidos usando identificadores inválidos. Se añadió una validación de UUID en `CartContext` y `Home` para blindar las peticiones a Supabase.
 - **Optimización de Redirección WhatsApp:** En móviles, se reemplazó `window.open` por una redirección de locación controlada por `setTimeout`, lo que garantiza que el navegador no bloquee la apertura de la App de WhatsApp tras el proceso asíncrono de guardado de pedido.
