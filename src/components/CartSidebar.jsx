@@ -119,9 +119,8 @@ export default function CartSidebar() {
       clearCart();
       setIsOpen(false);
       
-      setTimeout(() => {
-        window.location.href = waUrl;
-      }, 100);
+      // Abrir en nueva pestaña por solicitud del usuario
+      window.open(waUrl, '_blank');
 
     } catch (error) {
       console.error(error);

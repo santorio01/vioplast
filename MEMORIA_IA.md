@@ -168,9 +168,9 @@
 
 ### 4. Estado Actual y Próximos Pasos
 - **Estado:** Proceso de checkout estabilizado y simplificado para el cliente final. La aplicación es ahora mucho más resiliente a fallos de datos.
-- **Simplificación Extrema de Checkout:** Atendiendo al feedback del cliente sobre el uso móvil, se redujo el flujo de 3 pasos a solo 2.
-  - **Paso 1:** Revisión de Carrito.
-  - **Paso 2:** Formulario de Datos + Botón Directo a WhatsApp. Se integró la información de medios de pago como un bloque informativo para eliminar el paso intermedio.
+- **Unificación Total (Checkout de 1 Solo Paso):** Se eliminó por completo el flujo secuencial de pasos. Ahora, al abrir el carrito, el usuario ve su lista de productos y el formulario de contacto en una sola pantalla.
+  - El botón final procesa el registro de cliente, crea el pedido y abre WhatsApp en una sola acción atómica.
+  - Se optimizó el scroll para que el formulario sea visible inmediatamente después de la lista de productos.
 - **Solución de "Caché Visual" en Móviles:** Se implementó un reseteo forzado del estado del sidebar al cerrarse. Ahora, tras una compra exitosa, el carrito se limpia instantáneamente y el sidebar se cierra, redirigiendo al usuario a WhatsApp de forma fluida.
 - **Corrección de Errores Silenciosos (HTTP 400):** Se detectó que algunas sesiones antiguas intentaban consultar pedidos usando identificadores inválidos. Se añadió una validación de UUID en `CartContext` y `Home` para blindar las peticiones a Supabase.
 - **Optimización de Redirección WhatsApp:** En móviles, se reemplazó `window.open` por una redirección de locación controlada por `setTimeout`, lo que garantiza que el navegador no bloquee la apertura de la App de WhatsApp tras el proceso asíncrono de guardado de pedido.
