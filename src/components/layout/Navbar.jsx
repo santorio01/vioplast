@@ -18,8 +18,20 @@ export default function Navbar() {
       const adminStatus = localStorage.getItem('vioplast_admin') === 'true';
       const clientData = localStorage.getItem('vioplast_client');
       setIsAdmin(adminStatus);
-      if (clientData) setClient(JSON.parse(clientData));
-      else setClient(null);
+      if (clientData) {
+        try {
+          const parsed = JSON.parse(clientData);
+          if (parsed && typeof parsed === 'object') {
+            setClient(parsed);
+          } else {
+            setClient(null);
+          }
+        } catch (e) {
+          setClient(null);
+        }
+      } else {
+        setClient(null);
+      }
     };
 
     syncStatus();

@@ -148,3 +148,26 @@
 - **Próximos Pasos:** 
   1. Validar con el cliente si prefiere que el botón de cerrar sesión en móvil tenga texto o solo icono.
   2. Implementar guardado automático de datos de envío en el perfil para compras recurrentes.
+## 📅 Bitácora de Trabajo - [2026-05-11]
+
+### 1. Resumen de Actividades
+- **Corrección Crítica de Estabilidad:** Se solucionó un error de desbordamiento (`TypeError`) que provocaba la pantalla de "Algo salió mal" durante el checkout. El fallo ocurría cuando el sistema intentaba procesar datos de sesión corruptos o nulos desde el `localStorage`.
+- **Blindaje de Contexto Global:** Se implementó encadenamiento opcional (`?.`) y validaciones de tipo en `CartContext.jsx` para asegurar que el acceso a `clientId` sea seguro en todo momento, incluso si la sesión falla.
+- **Refactorización de Registro de Clientes:** Se simplificó la lógica en `CartSidebar.jsx` migrando a una operación `upsert` (actualizar o insertar). 
+  - **Robustez:** Ahora el sistema acepta cédulas que ya existen en la base de datos, actualizando la información del cliente en lugar de lanzar errores de duplicidad.
+  - **Simplicidad:** Se eliminó la necesidad de realizar consultas previas manuales, reduciendo la latencia y la probabilidad de errores en el flujo de compra.
+- **Seguridad en Navegación:** Se añadieron bloques `try-catch` en el `Navbar` para garantizar que la interfaz de usuario no se bloquee ante inconsistencias de datos en el navegador.
+- **Mejora en ID de Pedidos:** Se aseguró que la generación del ID abreviado del pedido sea segura mediante la conversión explícita a `String` antes de la manipulación de la cadena.
+
+### 2. Conocimientos y Lógicas Aplicadas
+- **Operaciones Atómicas (Upsert):** El uso de `upsert` con `onConflict` en Supabase es la forma más eficiente de manejar registros de "identificación rápida" (como cédulas) sin complicar el frontend con lógica de bifurcación.
+- **Defensive Programming:** La importancia de validar no solo si una variable existe, sino también su tipo (`typeof parsed === 'object'`), especialmente cuando los datos provienen de fuentes externas persistentes como `localStorage`.
+
+### 3. Errores y Soluciones
+- **Crash por "null" en string:** Se identificó que `localStorage.getItem` devuelve la cadena `"null"` si se guardó un objeto nulo, lo cual es evaluado como `true` en JavaScript. **Solución:** Se implementó una validación post-parseo para confirmar que el resultado sea un objeto antes de acceder a sus propiedades.
+
+### 4. Estado Actual y Próximos Pasos
+- **Estado:** Proceso de checkout estabilizado y simplificado para el cliente final. La aplicación es ahora mucho más resiliente a fallos de datos.
+- **Próximos Pasos:**
+  1. Monitorear si hay fallos en la apertura de WhatsApp en diferentes navegadores móviles.
+  2. Evaluar si se desea añadir una confirmación visual más llamativa tras enviar el pedido.

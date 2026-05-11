@@ -9,7 +9,8 @@ export const CartProvider = ({ children }) => {
   const [clientId, setClientId] = useState(() => {
     try {
       const data = localStorage.getItem('vioplast_client');
-      return data ? JSON.parse(data).id : 'guest';
+      const parsed = data ? JSON.parse(data) : null;
+      return (parsed && typeof parsed === 'object') ? parsed.id : 'guest';
     } catch (e) { return 'guest'; }
   });
 
@@ -27,7 +28,8 @@ export const CartProvider = ({ children }) => {
     const handleSessionChange = async () => {
       try {
         const data = localStorage.getItem('vioplast_client');
-        const newId = data ? JSON.parse(data).id : 'guest';
+        const parsed = data ? JSON.parse(data) : null;
+        const newId = (parsed && typeof parsed === 'object') ? parsed.id : 'guest';
         
         if (newId !== clientId) {
           setClientId(newId);

@@ -75,34 +75,30 @@ export default function CartSidebar() {
     setLoading(true);
     const cleanCedula = clientForm.cedula.trim();
     try {
-      // Registrar o actualizar cliente
-      let { data: existingClient } = await supabase.from('clients').select('*').eq('cedula', cleanCedula).single();
-      
-      let finalClient = null;
-      if (existingClient) {
-        // Actualizar datos faltantes
-        const { data: updated } = await supabase.from('clients').update({
+      // Usar upsert: si existe lo actualiza, si no lo crea. 
+      // cedula es el campo de conflicto (UNIQUE).
+      const { data, error } = await supabase
+        .from('clients')
+        .upsert({
+          cedula: cleanCedula,
           name: clientForm.name,
           email: clientForm.email,
           phone: clientForm.phone
-        }).eq('id', existingClient.id).select().single();
-        finalClient = updated;
-      } else {
-        // Crear cliente nuevo
-        const { data: created } = await supabase.from('clients').insert([{
-          ...clientForm,
-          cedula: cleanCedula
-        }]).select().single();
-        finalClient = created;
-      }
+        }, { onConflict: 'cedula' })
+        .select()
+        .single();
 
-      localStorage.setItem('vioplast_client', JSON.stringify(finalClient));
+      if (error) throw error;
+      if (!data) throw new Error("No data returned");
+
+      localStorage.setItem('vioplast_client', JSON.stringify(data));
       setStep(3); // Avanzar a pagos
       
-      // Notificar un cambio de sesión global para Navbar y Home
+      // Notificar un cambio de sesión global
       window.dispatchEvent(new Event('vioplast_session_change'));
     } catch (error) {
-      alert('Error guardando tus datos.');
+      console.error('Error saving client:', error);
+      alert('Error guardando tus datos. Por favor verifica la información.');
     } finally {
       setLoading(false);
     }
@@ -137,7 +133,7 @@ export default function CartSidebar() {
         status: 'pending'
       }]).select('id').single();
       
-      if (!error) orderId = data.id.substring(0, 8);
+      if (!error && data?.id) orderId = String(data.id).substring(0, 8);
 
       // Solicitud especial
       if (customRequest) {
