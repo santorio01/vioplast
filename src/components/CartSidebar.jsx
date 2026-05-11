@@ -57,6 +57,14 @@ export default function CartSidebar() {
     };
   }, []);
 
+  // Resetear el paso al cerrar el sidebar para evitar "caché visual"
+  useEffect(() => {
+    if (!isOpen) {
+      const timer = setTimeout(() => setStep(1), 300); // Esperar a que termine la animación de cierre
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen]);
+
   const fetchSettings = async () => {
     try {
       const { data } = await supabase.from('settings').select('*').limit(1).single();
@@ -75,8 +83,6 @@ export default function CartSidebar() {
     setLoading(true);
     const cleanCedula = clientForm.cedula.trim();
     try {
-      // Usar upsert: si existe lo actualiza, si no lo crea. 
-      // cedula es el campo de conflicto (UNIQUE).
       const { data, error } = await supabase
         .from('clients')
         .upsert({
@@ -92,14 +98,13 @@ export default function CartSidebar() {
       if (!data) throw new Error("No data returned");
 
       localStorage.setItem('vioplast_client', JSON.stringify(data));
-      setStep(3); // Avanzar a pagos
-      
-      // Notificar un cambio de sesión global
       window.dispatchEvent(new Event('vioplast_session_change'));
+      
+      // En lugar de ir a un paso 3, disparamos el checkout final inmediatamente
+      await handleFinalCheckout(false); 
     } catch (error) {
       console.error('Error saving client:', error);
       alert('Error guardando tus datos. Por favor verifica la información.');
-    } finally {
       setLoading(false);
     }
   };
@@ -158,10 +163,16 @@ export default function CartSidebar() {
 
       const waUrl = `https://wa.me/${storePhone}?text=${msg}`;
       
+      // Limpieza agresiva de estado
       clearCart();
-      setIsOpen(false);
       setStep(1);
-      window.open(waUrl, '_blank');
+      setIsOpen(false);
+
+      // En móviles, window.open puede ser bloqueado si ocurre tras un await largo.
+      // Usamos una redirección directa o intentamos abrir.
+      setTimeout(() => {
+        window.location.href = waUrl;
+      }, 100);
 
     } catch (error) {
       alert("Hubo un error asimilando tu pedido.");
@@ -194,7 +205,7 @@ export default function CartSidebar() {
         <div className="p-6 bg-[#4608C2] text-white flex justify-between items-center shadow-md">
           <h2 className="text-xl font-bold flex items-center gap-2">
             {step > 1 && <button onClick={() => setStep(step - 1)} className="hover:bg-[#6225e6] p-1 rounded-full"><ArrowLeft size={20}/></button>}
-            {step === 1 ? 'Tu Pedido' : step === 2 ? 'Tus Datos' : 'Realizar Pago'}
+            {step === 1 ? 'Tu Pedido' : 'Confirmar Datos'}
           </h2>
           <button onClick={() => setIsOpen(false)} className="hover:bg-[#6225e6] p-1 rounded-full transition">
             <X size={24} />
@@ -258,74 +269,44 @@ export default function CartSidebar() {
 
         {/* STEP 2: DATOS DEL CLIENTE */}
         {step === 2 && (
-          <form onSubmit={handleSaveClientAndProceed} className="flex-grow flex flex-col p-6 animate-fade-in">
-            <h3 className="text-lg font-bold text-gray-800 mb-4">Ingresa tu información</h3>
-            <div className="space-y-4 flex-grow">
+          <form onSubmit={handleSaveClientAndProceed} className="flex-grow flex flex-col p-6 animate-fade-in overflow-y-auto">
+            <h3 className="text-lg font-bold text-gray-800 mb-4">Información de Envío</h3>
+            <div className="space-y-4 mb-6">
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-1">Cédula / NIT *</label>
-                <input required type="text" value={clientForm.cedula} onChange={e => setClientForm({...clientForm, cedula: e.target.value})} className="w-full border rounded-lg p-3 bg-gray-50 outline-none focus:border-[#4608C2]" />
+                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Cédula / NIT</label>
+                <input required type="text" value={clientForm.cedula} onChange={e => setClientForm({...clientForm, cedula: e.target.value})} className="w-full border rounded-xl p-3 bg-gray-50 outline-none focus:border-[#4608C2] font-bold" />
               </div>
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-1">Nombre Completo *</label>
-                <input required type="text" value={clientForm.name} onChange={e => setClientForm({...clientForm, name: e.target.value})} className="w-full border rounded-lg p-3 bg-gray-50 outline-none focus:border-[#4608C2]" />
+                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Nombre Completo</label>
+                <input required type="text" value={clientForm.name} onChange={e => setClientForm({...clientForm, name: e.target.value})} className="w-full border rounded-xl p-3 bg-gray-50 outline-none focus:border-[#4608C2] font-bold" />
               </div>
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-1">Correo Electrónico *</label>
-                <input required type="email" value={clientForm.email} onChange={e => setClientForm({...clientForm, email: e.target.value})} className="w-full border rounded-lg p-3 bg-gray-50 outline-none focus:border-[#4608C2]" />
-              </div>
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-1">Celular / Teléfono *</label>
-                <input required type="text" value={clientForm.phone} onChange={e => setClientForm({...clientForm, phone: e.target.value})} className="w-full border rounded-lg p-3 bg-gray-50 outline-none focus:border-[#4608C2]" />
-              </div>
-            </div>
-            
-            <button type="submit" disabled={loading} className="w-full mt-6 bg-[#4608C2] text-white font-bold py-4 rounded-xl shadow-lg hover:bg-[#6225e6] transition disabled:opacity-50">
-              {loading ? 'Validando...' : 'Ir al Pago'}
-            </button>
-          </form>
-        )}
-
-        {/* STEP 3: MÉTODOS DE PAGO Y CONFIRMACIÓN */}
-        {step === 3 && (
-          <div className="flex-grow flex flex-col p-6 animate-fade-in overflow-y-auto">
-            <h3 className="text-lg font-bold text-gray-800 mb-2">Medios de Pago</h3>
-            <p className="text-sm text-gray-500 mb-6">Realiza el pago a cualquiera de las siguientes cuentas oficiales de Vioplast:</p>
-            
-            <div className="space-y-3 mb-8">
-              {!settings?.payment_methods || settings.payment_methods.length === 0 ? (
-                <div className="bg-yellow-50 text-yellow-800 p-4 rounded-lg text-sm border border-yellow-200">
-                  El asesor se contactará para indicarle las opciones de pago.
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Email</label>
+                  <input required type="email" value={clientForm.email} onChange={e => setClientForm({...clientForm, email: e.target.value})} className="w-full border rounded-xl p-3 bg-gray-50 outline-none focus:border-[#4608C2] text-xs font-bold" />
                 </div>
-              ) : (
-                settings.payment_methods.map((pm, i) => (
-                  <div key={i} className="bg-gradient-to-r from-gray-50 to-white border p-4 rounded-xl shadow-sm text-sm">
-                    <span className="font-bold text-[#4608C2] uppercase tracking-wider">{pm.type}</span>
-                    <p className="text-gray-800 mt-1">{pm.details}</p>
-                  </div>
-                ))
-              )}
+                <div>
+                  <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Celular</label>
+                  <input required type="text" value={clientForm.phone} onChange={e => setClientForm({...clientForm, phone: e.target.value})} className="w-full border rounded-xl p-3 bg-gray-50 outline-none focus:border-[#4608C2] font-bold" />
+                </div>
+              </div>
             </div>
 
-            <div className="mt-auto space-y-3 pt-6 border-t border-gray-100">
-              <h4 className="font-bold text-center text-gray-800 mb-2">Finalizar Pedido (Total: ${(totalPrice || 0).toLocaleString()})</h4>
-              
-              <button 
-                onClick={() => handleFinalCheckout(false)} 
-                disabled={loading}
-                className="w-full bg-white border-2 border-[#00e676] text-green-700 font-bold py-3 rounded-xl hover:bg-green-50 transition flex items-center justify-center gap-2"
-              >
-                <MessageCircle size={18} /> Avisar que compraré
-              </button>
-              
-              <button 
-                onClick={() => handleFinalCheckout(true)} 
-                disabled={loading}
-                className="w-full bg-[#00e676] text-black font-bold py-4 rounded-xl shadow-lg hover:bg-[#00c853] transition flex items-center justify-center gap-2"
-              >
-                <Send size={18} /> Enviar Comprobante de Pago
-              </button>
+            {/* Medios de Pago resumidos para agilizar */}
+            <div className="bg-purple-50 p-4 rounded-2xl border border-purple-100 mb-6">
+              <h4 className="text-[10px] font-black text-[#4608C2] uppercase mb-2">Medios de Pago Disponibles:</h4>
+              <div className="flex flex-wrap gap-2">
+                {settings?.payment_methods?.map((pm, i) => (
+                  <span key={i} className="bg-white px-2 py-1 rounded-lg text-[9px] font-black border border-purple-100">{pm.type}</span>
+                )) || <span className="text-[9px] font-bold text-gray-500 italic">Consultar por WhatsApp</span>}
+              </div>
             </div>
-          </div>
+            
+            <button type="submit" disabled={loading} className="w-full mt-auto bg-[#00e676] text-black font-black py-4 rounded-2xl shadow-lg hover:shadow-[#00e676]/20 transition-all flex items-center justify-center gap-2 uppercase text-xs tracking-widest">
+              {loading ? 'Procesando...' : <><MessageCircle size={18} /> Finalizar y Enviar a WhatsApp</>}
+            </button>
+            <p className="text-[9px] text-center text-gray-400 mt-3 font-bold uppercase tracking-tighter italic">Se abrirá WhatsApp para confirmar tu pedido con un asesor</p>
+          </form>
         )}
 
       </div>

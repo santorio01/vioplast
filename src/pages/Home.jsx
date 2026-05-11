@@ -109,7 +109,8 @@ export default function Home() {
       }
 
       // 3. Si hay cliente, cargar historial de pedidos
-      if (client?.id) {
+      const isUUID = (str) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
+      if (client?.id && isUUID(client.id)) {
         const { data: orderData } = await supabase
           .from('orders')
           .select('*')

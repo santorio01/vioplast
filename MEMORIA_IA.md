@@ -168,6 +168,21 @@
 
 ### 4. Estado Actual y Próximos Pasos
 - **Estado:** Proceso de checkout estabilizado y simplificado para el cliente final. La aplicación es ahora mucho más resiliente a fallos de datos.
+- **Simplificación Extrema de Checkout:** Atendiendo al feedback del cliente sobre el uso móvil, se redujo el flujo de 3 pasos a solo 2.
+  - **Paso 1:** Revisión de Carrito.
+  - **Paso 2:** Formulario de Datos + Botón Directo a WhatsApp. Se integró la información de medios de pago como un bloque informativo para eliminar el paso intermedio.
+- **Solución de "Caché Visual" en Móviles:** Se implementó un reseteo forzado del estado del sidebar al cerrarse. Ahora, tras una compra exitosa, el carrito se limpia instantáneamente y el sidebar se cierra, redirigiendo al usuario a WhatsApp de forma fluida.
+- **Corrección de Errores Silenciosos (HTTP 400):** Se detectó que algunas sesiones antiguas intentaban consultar pedidos usando identificadores inválidos. Se añadió una validación de UUID en `CartContext` y `Home` para blindar las peticiones a Supabase.
+- **Optimización de Redirección WhatsApp:** En móviles, se reemplazó `window.open` por una redirección de locación controlada por `setTimeout`, lo que garantiza que el navegador no bloquee la apertura de la App de WhatsApp tras el proceso asíncrono de guardado de pedido.
+
+### 2. Conocimientos y Lógicas Aplicadas
+- **UX de Contacto Directo:** En aplicaciones donde el cierre de venta ocurre por fuera (WhatsApp), la menor cantidad de clics entre el carrito y la App de mensajería es la métrica de éxito.
+- **Resiliencia de Sesión:** La validación de tipos (UUID) es crítica en sistemas que evolucionan sus modelos de datos para no romper la experiencia de usuarios que conservan cookies o storage antiguos.
+
+### 3. Errores y Soluciones
+- **Sidebar "atrapado":** Tras abrir WhatsApp, el sidebar quedaba abierto en el paso final. **Solución:** Reseteo de estado en el evento de cierre y limpieza inmediata de carrito en nube y local.
+
+### 4. Estado Actual y Próximos Pasos
+- **Estado:** Flujo optimizado para móviles, sin errores de red detectados y con redirección robusta.
 - **Próximos Pasos:**
-  1. Monitorear si hay fallos en la apertura de WhatsApp en diferentes navegadores móviles.
-  2. Evaluar si se desea añadir una confirmación visual más llamativa tras enviar el pedido.
+  1. Confirmar con el cliente si la simplificación de pasos cumple con sus expectativas de agilidad.

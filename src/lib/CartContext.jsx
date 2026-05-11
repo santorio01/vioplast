@@ -29,7 +29,13 @@ export const CartProvider = ({ children }) => {
       try {
         const data = localStorage.getItem('vioplast_client');
         const parsed = data ? JSON.parse(data) : null;
-        const newId = (parsed && typeof parsed === 'object') ? parsed.id : 'guest';
+        let newId = (parsed && typeof parsed === 'object') ? parsed.id : 'guest';
+        
+        // Validar que sea un UUID si no es guest
+        const isUUID = (str) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
+        if (newId !== 'guest' && !isUUID(newId)) {
+          newId = 'guest';
+        }
         
         if (newId !== clientId) {
           setClientId(newId);
@@ -104,6 +110,13 @@ export const CartProvider = ({ children }) => {
   const clearCart = () => {
     setCart([]);
     localStorage.removeItem(`vioplast_cart_${clientId}`);
+    // Limpieza inmediata en la nube si hay cliente
+    if (clientId !== 'guest') {
+      supabase.from('clients').update({ cart: [] }).eq('id', clientId)
+        .then(({ error }) => {
+          if (error) console.error("Error clearing cloud cart:", error);
+        });
+    }
   };
 
   const totalItems = cart.reduce((acc, item) => acc + item.quantity, 0);
