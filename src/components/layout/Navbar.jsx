@@ -67,7 +67,7 @@ export default function Navbar() {
           {/* Logo y Navegación Principal */}
           <div className="flex items-center gap-2 sm:gap-6">
             <Link to="/" className="flex items-center transition-transform active:scale-95">
-              <img src="/logo.png" alt="Vioplast Logo" className="h-8 sm:h-12 w-auto object-contain" />
+              <img src="/logo_vioplast.png" alt="Vioplast Logo" className="h-8 sm:h-12 w-auto object-contain" />
             </Link>
             
             {/* Desktop Menu */}

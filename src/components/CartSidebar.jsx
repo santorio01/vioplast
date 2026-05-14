@@ -101,8 +101,22 @@ export default function CartSidebar() {
         }]);
       }
 
-      // 4. WhatsApp URL
-      const storePhone = settings?.store_whatsapp || '573000000000';
+      // 4. WhatsApp URL (Carga forzada final)
+      let currentSettings = settings;
+      if (!currentSettings || !currentSettings.store_whatsapp) {
+        // Intentar una carga de último segundo
+        const { data: freshSettings } = await supabase.from('settings').select('store_whatsapp').limit(1).single();
+        currentSettings = freshSettings;
+      }
+
+      const storePhone = currentSettings?.store_whatsapp;
+      
+      if (!storePhone) {
+        alert("⚠️ Error de configuración: No se pudo encontrar el número de WhatsApp de la tienda. Por favor contacta a soporte.");
+        setLoading(false);
+        return;
+      }
+
       let msg = `Hola Vioplast! Quiero realizar este pedido.%0A%0A`;
       msg += `*ID Pedido:* ${orderId}%0A`;
       msg += `*Cédula:* ${clientData.cedula} - *Cliente:* ${clientData.name}%0A%0A`;
@@ -118,13 +132,11 @@ export default function CartSidebar() {
       
       clearCart();
       setIsOpen(false);
-      
-      // Abrir en nueva pestaña por solicitud del usuario
       window.open(waUrl, '_blank');
 
     } catch (error) {
       console.error(error);
-      alert("Hubo un error procesando tu solicitud. Por favor intenta de nuevo.");
+      alert("Hubo un problema al procesar tu pedido. Verifica tu conexión e intenta de nuevo.");
       setLoading(false);
     }
   };
