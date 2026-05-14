@@ -13,7 +13,8 @@ import {
   Send,
   Eye,
   Info,
-  X
+  X,
+  Trash2
 } from 'lucide-react';
 
 export default function Home() {
@@ -145,6 +146,24 @@ export default function Home() {
     window.open(waUrl, '_blank');
   };
 
+  const handleDeleteOrder = async (orderId) => {
+    if (!window.confirm('¿Estás seguro de que deseas eliminar este pedido del historial?')) return;
+    
+    try {
+      const { error } = await supabase
+        .from('orders')
+        .delete()
+        .eq('id', orderId);
+      
+      if (error) throw error;
+      
+      setPastOrders(prev => prev.filter(o => o.id !== orderId));
+    } catch (error) {
+      console.error('Error deleting order:', error);
+      alert('No se pudo eliminar el pedido. Intenta de nuevo.');
+    }
+  };
+
   const filteredProducts = products.filter(p => {
     const matchesCategory = selectedCategory === 'Todos' || p.category === selectedCategory;
     const matchesSearch = (p.name || '').toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -158,9 +177,11 @@ export default function Home() {
       <section className="bg-gradient-to-r from-[#4608C2] to-[#6225e6] text-white py-12 md:py-20 px-4 text-center relative overflow-hidden">
         <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] animate-pulse"></div>
         <div className="relative z-10">
-          <h1 className="text-4xl md:text-5xl font-extrabold mb-4 tracking-tight">Soluciones en Plásticos y Empaques</h1>
+          <h1 className="text-4xl md:text-5xl font-extrabold mb-4 tracking-tight">
+            {settings?.about_company?.hero_title || 'Empaques Premium para tus Snacks y Frutos Secos'}
+          </h1>
           <p className="text-lg md:text-xl max-w-2xl mx-auto opacity-90 mb-8 font-medium">
-            Calidad premium en morrales, bolsas y plásticos para tu industria y hogar.
+            {settings?.about_company?.hero_subtitle || 'Bolsas especializadas diseñadas para preservar la frescura de tus productos. La solución ideal para tu negocio.'}
           </p>
           <div className="flex flex-col sm:flex-row justify-center gap-4">
             <a href="#catalogo" className="bg-[#00e676] text-black font-black uppercase text-sm tracking-wider px-10 py-4 rounded-full hover:bg-white transition-all shadow-xl transform hover:-translate-y-1">
@@ -322,6 +343,15 @@ export default function Home() {
                         >
                           <Send size={14} />
                         </button>
+                        {(order.status === 'completed' || order.status === 'cancelled') && (
+                          <button 
+                            onClick={() => handleDeleteOrder(order.id)}
+                            className="p-2.5 bg-red-50 hover:bg-red-100 text-red-500 rounded-xl transition"
+                            title="Eliminar pedido del historial"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        )}
                       </div>
                     </div>
                   ))}

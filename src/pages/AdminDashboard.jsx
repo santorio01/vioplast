@@ -22,7 +22,15 @@ export default function AdminDashboard() {
     store_whatsapp: '', 
     payment_methods: [], 
     contact_methods: [],
-    about_company: { text: '', address: '', imageUrl: '', mapEmbed: '', gallery: [] },
+    about_company: { 
+      text: '', 
+      address: '', 
+      imageUrl: '', 
+      mapEmbed: '', 
+      gallery: [],
+      hero_title: '',
+      hero_subtitle: ''
+    },
     product_categories: ['Polipropileno', 'Polietileno']
   });
   const [savingSettings, setSavingSettings] = useState(false);
@@ -1000,6 +1008,29 @@ export default function AdminDashboard() {
                 <div>
                   <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">🏢 Perfil Institucional</h3>
                   <div className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-bold text-gray-700 mb-1">Título del Banner (Hero)</label>
+                        <input
+                          type="text"
+                          value={settings.about_company?.hero_title || ''}
+                          onChange={(e) => setSettings({...settings, about_company: {...settings.about_company, hero_title: e.target.value}})}
+                          className="w-full border rounded-lg p-3 bg-gray-50 outline-none focus:ring-2 focus:ring-[#4608C2]"
+                          placeholder="Ej: Empaques Premium para tus Snacks"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-bold text-gray-700 mb-1">Subtítulo del Banner (Hero)</label>
+                        <input
+                          type="text"
+                          value={settings.about_company?.hero_subtitle || ''}
+                          onChange={(e) => setSettings({...settings, about_company: {...settings.about_company, hero_subtitle: e.target.value}})}
+                          className="w-full border rounded-lg p-3 bg-gray-50 outline-none focus:ring-2 focus:ring-[#4608C2]"
+                          placeholder="Ej: Bolsas especializadas para..."
+                        />
+                      </div>
+                    </div>
+
                     <div>
                       <label className="block text-sm font-bold text-gray-700 mb-1">Historia / Misión</label>
                       <textarea

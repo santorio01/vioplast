@@ -99,10 +99,10 @@ export default function AboutUs() {
                 <Building2 size={16} /> Nuestra Historia
               </div>
               <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900 leading-tight">
-                Liderando el mercado de <span className="text-[#4608C2]">empaques plásticos</span> en Colombia
+                Expertos en <span className="text-[#4608C2]">empaques para snacks</span> y frutos secos
               </h2>
               <p className="text-lg text-gray-600 leading-relaxed whitespace-pre-wrap">
-                {about.text || 'Bajo la visión de ofrecer empaques y dotaciones plásticas de la más alta calidad, nacimos para suplir de manera eficiente a hogares, negocios e industrias. Comprometidos con el cumplimiento y el servicio, proveemos todo tu embalaje.'}
+                {about.text || 'Bajo la visión de ofrecer empaques especializados para la industria alimentaria y de snacks de la más alta calidad, nacimos para suplir de manera eficiente a emprendedores e industrias. Comprometidos con la frescura y el diseño, proveemos la mejor solución para tus productos.'}
               </p>
               
               <div className="grid grid-cols-2 gap-6 pt-4">
