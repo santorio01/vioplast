@@ -36,7 +36,8 @@ export default function AdminDashboard() {
   const [savingSettings, setSavingSettings] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [formData, setFormData] = useState({
-    name: '', subtitle: '', description: '', uses: '', price: '', stock: '', images: ['', '', ''], category: ''
+    name: '', subtitle: '', description: '', uses: '', price: '', stock: '', images: ['', '', ''], category: '',
+    is_featured: false, featured_text: ''
   });
   const [orders, setOrders] = useState([]);
   const [loadingOrders, setLoadingOrders] = useState(false);
@@ -258,7 +259,9 @@ export default function AdminDashboard() {
         price: parseFloat(formData.price),
         stock: parseInt(formData.stock, 10),
         images: formData.images.filter(img => img.trim() !== ''),
-        category: formData.category || 'Sin Categoría'
+        category: formData.category || 'Sin Categoría',
+        is_featured: formData.is_featured,
+        featured_text: formData.featured_text
       };
 
       if (editingId) {
@@ -291,14 +294,19 @@ export default function AdminDashboard() {
         product.images?.[1] || '',
         product.images?.[2] || ''
       ],
-      category: product.category || ''
+      category: product.category || '',
+      is_featured: product.is_featured || false,
+      featured_text: product.featured_text || ''
     });
     setShowModal(true);
   };
 
   const openCreateModal = () => {
     setEditingId(null);
-    setFormData({ name: '', subtitle: '', description: '', uses: '', price: '', stock: '', images: ['', '', ''], category: '' });
+    setFormData({ 
+      name: '', subtitle: '', description: '', uses: '', price: '', stock: '', 
+      images: ['', '', ''], category: '', is_featured: false, featured_text: '' 
+    });
     setShowModal(true);
   };
 
@@ -604,6 +612,36 @@ export default function AdminDashboard() {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Usos y Aplicaciones</label>
                 <textarea rows="2" value={formData.uses} onChange={e => setFormData({...formData, uses: e.target.value})} className="w-full border rounded-lg p-2 focus:ring-2 focus:ring-[#4608C2] outline-none"></textarea>
+              </div>
+
+              <div className="bg-purple-50 p-4 rounded-xl border border-purple-100 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className={`w-2 h-2 rounded-full ${formData.is_featured ? 'bg-green-500 animate-pulse' : 'bg-gray-300'}`}></div>
+                    <label className="text-sm font-bold text-gray-700">Destacar este producto en la página principal</label>
+                  </div>
+                  <button 
+                    type="button"
+                    onClick={() => setFormData({...formData, is_featured: !formData.is_featured})}
+                    className={`w-12 h-6 rounded-full transition-colors relative ${formData.is_featured ? 'bg-[#4608C2]' : 'bg-gray-300'}`}
+                  >
+                    <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${formData.is_featured ? 'left-7' : 'left-1'}`}></div>
+                  </button>
+                </div>
+                
+                {formData.is_featured && (
+                  <div className="animate-fade-in">
+                    <label className="block text-xs font-black text-[#4608C2] uppercase tracking-widest mb-2">Resumen Personalizado para el Destaque</label>
+                    <textarea 
+                      rows="3" 
+                      value={formData.featured_text} 
+                      onChange={e => setFormData({...formData, featured_text: e.target.value})} 
+                      placeholder="Escribe aquí el texto que convencerá a tus clientes de comprar este producto resaltado..."
+                      className="w-full border border-purple-200 rounded-lg p-3 text-sm focus:ring-2 focus:ring-[#4608C2] outline-none bg-white shadow-inner"
+                    ></textarea>
+                    <p className="text-[10px] text-gray-400 mt-1 italic">Este texto aparecerá junto a la imagen grande en la página de inicio.</p>
+                  </div>
+                )}
               </div>
 
               <div>

@@ -38,6 +38,7 @@ export default function Home() {
   const [selectedOrderDetails, setSelectedOrderDetails] = useState(null);
   const [loading, setLoading] = useState(true);
   const [settings, setSettings] = useState(null);
+  const [featuredProduct, setFeaturedProduct] = useState(null);
   
   // Soporte para Carrusel de Categorías
   const scrollRef = React.useRef(null);
@@ -93,6 +94,10 @@ export default function Home() {
 
       if (prodErr) throw prodErr;
       setProducts(prodData || []);
+      
+      // Identificar el producto destacado (el más reciente marcado como is_featured)
+      const featured = prodData?.find(p => p.is_featured);
+      setFeaturedProduct(featured || null);
 
       // 2. Cargar Categorías y WhatsApp desde settings
       const { data: settingsData } = await supabase
@@ -437,6 +442,82 @@ export default function Home() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* SECCIÓN DE PRODUCTO DESTACADO (MANUAL) */}
+      {featuredProduct && (
+        <section className="max-w-7xl mx-auto px-4 py-16 w-full">
+          <div className="relative bg-gradient-to-br from-gray-900 to-[#4608C2] rounded-[48px] overflow-hidden shadow-2xl group">
+            {/* Patrón de fondo sutil */}
+            <div className="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] mix-blend-overlay"></div>
+            
+            <div className="relative z-10 grid grid-cols-1 lg:grid-cols-2 items-center">
+              {/* Contenido de Texto */}
+              <div className="p-8 md:p-16 text-white order-2 lg:order-1">
+                <div className="flex items-center gap-2 mb-6">
+                  <span className="bg-[#00e676] text-black text-[10px] font-black uppercase tracking-[0.2em] px-4 py-1.5 rounded-full shadow-lg animate-bounce">
+                    Recomendado
+                  </span>
+                  <span className="text-white/40 text-xs font-bold uppercase tracking-widest">
+                    Lanzamiento Exclusivo
+                  </span>
+                </div>
+                
+                <h2 className="text-4xl md:text-6xl font-black mb-6 leading-tight tracking-tighter">
+                  {featuredProduct.name}
+                </h2>
+                
+                <p className="text-lg md:text-xl text-purple-100/80 mb-8 leading-relaxed font-medium">
+                  {featuredProduct.featured_text || featuredProduct.description || "Descubre la calidad superior de nuestros empaques especializados para tu negocio."}
+                </p>
+                
+                <div className="flex flex-wrap items-center gap-6 mb-10">
+                  <div className="flex flex-col">
+                    <span className="text-xs font-bold uppercase tracking-widest text-white/40 mb-1">Precio Especial</span>
+                    <span className="text-4xl font-black text-[#00e676]">
+                      ${(Number(featuredProduct.price) || 0).toLocaleString()}
+                    </span>
+                  </div>
+                  <div className="h-10 w-px bg-white/10 hidden md:block"></div>
+                  <div className="flex flex-col">
+                    <span className="text-xs font-bold uppercase tracking-widest text-white/40 mb-1">Material</span>
+                    <span className="text-lg font-black">{featuredProduct.category}</span>
+                  </div>
+                </div>
+                
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <button 
+                    onClick={() => addToCart(featuredProduct)}
+                    className="bg-white text-[#4608C2] hover:bg-[#00e676] hover:text-black font-black uppercase text-sm tracking-widest px-10 py-5 rounded-2xl transition-all shadow-xl transform hover:-translate-y-1 flex items-center justify-center gap-3"
+                  >
+                    <Plus size={20} /> Agregar al Pedido
+                  </button>
+                  <Link 
+                    to={`/product/${featuredProduct.id}`}
+                    className="bg-white/10 backdrop-blur-md border border-white/20 text-white font-black uppercase text-sm tracking-widest px-10 py-5 rounded-2xl hover:bg-white/20 transition-all flex items-center justify-center gap-2"
+                  >
+                    Ver Detalles <ChevronRight size={18} />
+                  </Link>
+                </div>
+              </div>
+              
+              {/* Imagen Grande */}
+              <div className="relative h-[400px] lg:h-full min-h-[500px] order-1 lg:order-2 overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-t from-gray-900/60 to-transparent z-[5] lg:hidden"></div>
+                <img 
+                  src={featuredProduct.images?.[0] || 'https://placehold.co/800x800?text=Vioplast'} 
+                  alt={featuredProduct.name}
+                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000"
+                />
+                
+                {/* Badge de Precio Flotante (Mobile) */}
+                <div className="absolute bottom-8 right-8 lg:hidden z-10 bg-white p-4 rounded-3xl shadow-2xl">
+                   <p className="text-[#4608C2] font-black text-2xl">${(Number(featuredProduct.price) || 0).toLocaleString()}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
       )}
 
       {/* Catálogo Anchor */}
